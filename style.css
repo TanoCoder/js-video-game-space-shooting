@@ -1,17 +1,18 @@
 body{
   display: flex;
   flex-direction: column; 
-
-  margin-left: 1%;
-  margin-right: 1%;  
-  margin: auto;
 }
 
 .button{  
   text-align: center;
 }
 
-.canvas{   
+.canvas{  
+  background-image: url("sky.jpg"); 
+  padding: 0;  
+  margin: 0;
+  margin: auto;
   text-align: center;
   background-color: skyblue;
+  border: 1,solid,black;
 }
