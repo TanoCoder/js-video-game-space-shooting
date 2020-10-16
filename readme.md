@@ -37,4 +37,4 @@ To make this game, you need :
 - A table showing the latest scores
 - Rank the scores in order from highest to lowest
 
-![PewPew](./mandalorian.gif)
+
