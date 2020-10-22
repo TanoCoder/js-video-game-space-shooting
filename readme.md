@@ -1,15 +1,12 @@
-# Pew-Pew !
+# Javascript Canvas Video Game
 
-Pew-pew is a shooting game made in javascript(canvas).
+[Web GitHub Page]()
+
+Make a shooting game in javascript(canvas).
 
 - Time necessary : **1/2 day**
 - Work mode : **Solo**
-- Repository: `PewPew`
 - Deployment stragegy : GitHub Page
-
-## Introduction
-
-[Intro Canvas](https://docs.google.com/presentation/d/1wP0teZvkNTE5UlJbhjr00KC8bZ4kKQ9zZAmyeXnNfJ0/edit?usp=sharing)
 
 ## The elements
 
