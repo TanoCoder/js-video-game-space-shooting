@@ -1,6 +1,7 @@
 # Javascript Canvas Video Game
 
-[Web GitHub Page]()
+[Web GitHub Page: https://gaetano-di-salvo.github.io/javascript-canvas-video-game/ ](https://gaetano-di-salvo.github.io/javascript-canvas-video-game/)
+
 
 Make a shooting game in javascript(canvas).
 
