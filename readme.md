@@ -1,6 +1,6 @@
 # Javascript Canvas Video Game
 
-[Web GitHub Page: https://gaetano-di-salvo.github.io/javascript-canvas-video-game/ ](https://gaetano-di-salvo.github.io/javascript-canvas-video-game/)
+[Web GitHub Page: https://gaetano-di-salvo.github.io/js-video-game-space-invaders// ](https://gaetano-di-salvo.github.io/js-video-game-space-invaders/)
 
 
 Make a shooting game in javascript(canvas).
