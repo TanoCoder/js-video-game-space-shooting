@@ -5,10 +5,6 @@
 
 Make a shooting game in javascript(canvas).
 
-- Time necessary : **1/2 day**
-- Work mode : **Solo**
-- Deployment stragegy : GitHub Page
-
 ## The elements
 
 To make this game, you need :

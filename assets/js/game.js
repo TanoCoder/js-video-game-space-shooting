@@ -69,7 +69,7 @@
   // global spaceship
   // ----------------
   const spaceship = new Image();
-  spaceship.src = "assets/img/spaceship.svg";
+  spaceship.src = "assets/img/hero.png";
   let max_x;
   let x;
   let y;
@@ -124,7 +124,7 @@ document.querySelector(".btn_run").addEventListener("click", () =>{
   
     // space bar (to fire) 
     if (e.keyCode == 32){              
-      let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), (y + (spaceship.height - 133)));
+      let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), (y + (spaceship.height - 102) + 5 ));
       arrayLaser.push(newObjUserLaser);  
   
     }
