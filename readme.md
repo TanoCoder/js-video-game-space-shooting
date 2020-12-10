@@ -33,14 +33,14 @@ To make this game, you need :
 
 ### Images Credits
 - spaceship hero
-* Author: Skorpio
-* profil: https://opengameart.org/users/skorpio
+ Author: Skorpio
+ profil: https://opengameart.org/users/skorpio
 
 - spaceship enemies
 
 - lasers-and-beams
-* Author: Rawdanitsu
-* profil: https://opengameart.org/users/rawdanitsu
+ Author: Rawdanitsu
+ profil: https://opengameart.org/users/rawdanitsu
 
 
 ### Game developer :
