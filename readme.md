@@ -31,4 +31,21 @@ To make this game, you need :
 - A table showing the latest scores
 - Rank the scores in order from highest to lowest
 
+### Images Credits
+- spaceship hero
 
+Author: Skorpio
+profil: https://opengameart.org/users/skorpio
+
+
+- spaceship enemies
+
+
+- lasers-and-beams
+
+Author: Rawdanitsu
+profil: https://opengameart.org/users/rawdanitsu
+
+
+### Game developer :
+Gaetano Di Salvo
