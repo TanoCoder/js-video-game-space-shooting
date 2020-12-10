@@ -98,8 +98,6 @@
     heroKeyboardMoveAndFire();    
     outOfScreenGarbageCollector();
 
-    console.log(arrayLaser.length);
-
   } // end update
       
   // draw current frame
