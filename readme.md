@@ -32,7 +32,7 @@ To make this game, you need :
 - Rank the scores in order from highest to lowest
 
 ### Images Credits
-- spaceship hero
+- <u>spaceship hero</u>
 
 Author: Skorpio
 profil: https://opengameart.org/users/skorpio
