@@ -17,14 +17,14 @@
       // Test Keyboard combination
       // -------------------------
 
-      // left and fire (spacebarr)
+      // left and fire (spacebar)
       if (keyLeft && keySpace){
         x -= heroSpeed;
         if (x < 0){x = 0;}       
         let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - userLaserSpeed + 2);
         arrayLaser.push(newObjUserLaser);        
       } else {
-        // right and fire (spacebarr)
+        // right and fire (spacebar)
         if (keyRight && keySpace){
           x += heroSpeed;    
           if (x > max_x){x = max_x;}      
