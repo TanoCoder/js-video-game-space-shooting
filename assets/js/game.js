@@ -4,9 +4,46 @@
   // functions
   // _________
 
-  
-  // draw
-  // ----
+  // update current frame
+  // --------------------
+  function update(){
+    // HERO keyboard movement
+    // ----------------------
+    // left and fire (spacebarr)
+    if (keyLeft && keySpace){
+      x -= heroSpeed;
+      if (x < 0){x = 0;}       
+      let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), (y + (spaceship.height - 102) + 5 ));
+      arrayLaser.push(newObjUserLaser);        
+    } else {
+      // right and fire (spacebarr)
+      if (keyRight && keySpace){
+        x += heroSpeed;    
+        if (x > max_x){x = max_x;}      
+        let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), (y + (spaceship.height - 102) + 5 ));
+        arrayLaser.push(newObjUserLaser);        
+      } else {
+        // left alone
+        if (keyLeft){
+          x -= heroSpeed;
+          if (x < 0){x = 0;}       
+        }
+        // right alone
+        if (keyRight){
+          x += heroSpeed;    
+          if (x > max_x){x = max_x;}     
+        } 
+        // fire alone
+        if(keySpace){          
+            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), (y + (spaceship.height - 102) + 5 ));
+            arrayLaser.push(newObjUserLaser);          
+        }
+      }
+    } 
+  } 
+      
+  // draw current frame
+  // ------------------
   function draw(){        
     isUserLaserOutOfScreen = false;
     index = [];
@@ -66,14 +103,15 @@
   // seting up the Game
   // __________________
   
-  // global spaceship
+  // global HERO Spaceship
   // ----------------
   const spaceship = new Image();
   spaceship.src = "assets/img/hero.png";
   let max_x;
   let x;
   let y;
-
+  let heroSpeed = 7;
+  
   // global user laser beam
   // ----------------------
   const userLaser = new Image();
@@ -82,10 +120,13 @@
   let laserX;
   let laserY;
   let arrayLaser = [];
+  let cooldownHeroFire = 1000;
   
-  function objUserLaser(laserX, laserY) {
-    this.laserX = laserX;
-    this.laserY = laserY;    
+  class objUserLaser {
+    constructor(laserX, laserY) {
+      this.laserX = laserX;
+      this.laserY = laserY;
+    }
   }
 
   let isUserLaserOutOfScreen = false;
@@ -108,63 +149,66 @@
       // init but do not draw now, we have not yet shoot ;-)      
     } // end userLaser.onload
 
-  } // end spaceship.onload
+  } // end spaceship.onload  
   
-  
+  // init for keyboard management
+  const KEY_LEFT = "ArrowLeft";
+  const KEY_RIGHT = "ArrowRight";
+  const KEY_SPACE = " ";
+
+  let keyLeft = false;
+  let keyRight = false;
+  let keySpace = false;
+
+  // event listener
+  window.addEventListener("keydown", e => {
+        
+    if (e.key  == KEY_SPACE) {
+      keySpace = true;
+      
+    }
+    if (e.key  == KEY_RIGHT) {
+      keyRight = true;     
+      
+    }
+    if (e.key  == KEY_LEFT) {
+      keyLeft = true;
+      
+    }
+  });
+
+window.addEventListener("keyup", e => {
+  if (e.key  == KEY_SPACE){
+    keySpace = false;    
+    
+  }  
+  if (e.key  == KEY_RIGHT){      
+    keyRight = false;
+    
+  }
+  if (e.key  == KEY_LEFT){      
+    keyLeft = false;
+    
+  }
+});
 
 // start Game
 document.querySelector(".btn_run").addEventListener("click", () =>{    
+
   const run = document.querySelector(".btn_run");
   run.style.display = 'none';
 
-    // event listener "keydown"
-    window.addEventListener("keydown", doKeyDown, true);
-    function doKeyDown(e) {
-     //alert( e.keyCode );
-  
-    // space bar (to fire) 
-    if (e.keyCode == 32){              
-      let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), (y + (spaceship.height - 102) + 5 ));
-      arrayLaser.push(newObjUserLaser);  
-  
-    }
-  
-    // right
-    if (e.keyCode == 39){      
-      x += 15;    
-      if (x > max_x){      
-        x = max_x;
-      }      
-    }
-  
-    // left
-    if (e.keyCode == 37){
-      x -= 15;
-      if (x < 0){
-        x = 0 ;
-      }            
-    }   
-   
-  } // end event listener "keydown"
-  
-    // Game loop
-    // ---------
-    
-  
-    window.requestAnimationFrame(gameLoop);
-    function gameLoop() {	          
+    // Game loop 
+    // ---------  
+    function gameLoop() {                       
+      update();
       draw();    
-      window.requestAnimationFrame(gameLoop);
-    }
-  
+      window.requestAnimationFrame(gameLoop);      
+    }  
 
-});  
+    // 1st time calling game loop
+    window.requestAnimationFrame(gameLoop);
 
-
-
-  
-
-  
-
+  }); // end run
 
 })();
