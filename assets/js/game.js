@@ -117,7 +117,7 @@
   } // end draw
 
   // ________________
-  // seting up canvas
+  // setting up canvas
   // ________________
 
   // canvas init
@@ -127,7 +127,7 @@
   canvas.height = window.innerHeight;
   
   // ___________________________________
-  // seting up the Game Global variables
+  // setting up the Game Global variables
   // ___________________________________
 
   // Delta Time
@@ -240,7 +240,7 @@ document.querySelector(".btn_run").addEventListener("click", () =>{
     function gameLoop(hrt) {   
              
       // Delta Time
-      // to keep same speed in all cumputer
+      // to keep same speed in all computer
       // all moving element defined variable speed will multiply the dt in the update code...  
       dt = (hrt - last) / 1000; 
  
