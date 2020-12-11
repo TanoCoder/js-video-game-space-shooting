@@ -19,31 +19,31 @@
 
       // left and fire (spacebar)
       if (keyLeft && keySpace){
-        x -= heroSpeed;
+        x -= heroSpeed * dt;
         if (x < 0){x = 0;}       
-        let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - userLaserSpeed + 2);
+        let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - 10);
         arrayLaser.push(newObjUserLaser);        
       } else {
         // right and fire (spacebar)
         if (keyRight && keySpace){
-          x += heroSpeed;    
+          x += heroSpeed * dt;    
           if (x > max_x){x = max_x;}      
-          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - userLaserSpeed +2);
+          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - 10);
           arrayLaser.push(newObjUserLaser);        
         } else {
           // left alone
           if (keyLeft){
-            x -= heroSpeed;
+            x -= heroSpeed * dt;
             if (x < 0){x = 0;}       
           }
           // right alone
           if (keyRight){
-            x += heroSpeed;    
+            x += heroSpeed * dt;    
             if (x > max_x){x = max_x;}     
           } 
           // fire alone
           if(keySpace){          
-              let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - userLaserSpeed +2);
+              let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - 10);
               arrayLaser.push(newObjUserLaser);          
           }
         }
@@ -53,7 +53,7 @@
       // --------------------------------      
       for(let i = 0; i < arrayLaser.length; i++){            
         // ctx.drawImage(userLaser, 40, 173, 15, 31,laserX, laserY,15,31);     
-        arrayLaser[i].laserY = arrayLaser[i].laserY - userLaserSpeed;            
+        arrayLaser[i].laserY = arrayLaser[i].laserY - userLaserSpeed * dt;            
       }       
 
     } // end function heroKeyboardMoveAndFire()
@@ -126,24 +126,30 @@
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
   
-  // __________________
-  // seting up the Game
-  // __________________
+  // ___________________________________
+  // seting up the Game Global variables
+  // ___________________________________
+
+  // Delta Time
+  // ----------
+  let dt;
+  let last;
+  let hrt;
   
-  // global HERO Spaceship
-  // ----------------
+  // HERO Spaceship
+  // --------------
   const spaceship = new Image();
   spaceship.src = "assets/img/hero.png";
   let max_x;
   let x;
   let y;
-  let heroSpeed = 7;
+  let heroSpeed = 350;
   
   // global user laser beam
   // ----------------------
   const userLaser = new Image();
   userLaser.src = "assets/img/beams.png";    
-  let userLaserSpeed = 10;
+  let userLaserSpeed = 350;
   let laserX;
   let laserY;
   let arrayLaser = [];
@@ -225,13 +231,30 @@ document.querySelector(".btn_run").addEventListener("click", () =>{
   const run = document.querySelector(".btn_run");
   run.style.display = 'none';
 
-    // Game loop 
-    // ---------  
-    function gameLoop() {                       
+  // Delta Time init var
+  dt = 0;
+  last = performance.now();
+  
+    // Game loop frame by frame
+    // ------------------------
+    function gameLoop(hrt) {   
+             
+      // Delta Time
+      // to keep same speed in all cumputer
+      // all moving element defined variable speed will multiply the dt in the update code...  
+      dt = (hrt - last) / 1000; 
+ 
       update();
+
       draw();    
+
+      // for dt calcul
+      // hrt  is ..
+      last = hrt;
+
       window.requestAnimationFrame(gameLoop);      
     }  
+   
 
     // 1st time calling game loop
     window.requestAnimationFrame(gameLoop);
