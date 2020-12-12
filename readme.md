@@ -44,4 +44,4 @@ To make this game, you need :
 
 
 ### Game developer :
-Gaetano Di Salvo
+TANO
