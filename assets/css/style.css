@@ -9,7 +9,12 @@ canvas {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: black;
+  background: black;
+}
+
+#gameContainer {
+  width: 100%;
+  height: auto;
 }
 
 .btn_run {

@@ -29,7 +29,7 @@
       // left and fire (spacebar)
       if (keyLeft && keySpace){
         // Hero x pos
-        x -= heroSpeed * dt;               
+        x -= Math.floor(heroSpeed * dt);
         if (x < 0){x = 0;}         
         
         // if no colldown hero fire, then trigger first pos of fire laser
@@ -44,7 +44,7 @@
         // right and fire (spacebar)
         if (keyRight && keySpace){
           // Hero x pos
-          x += heroSpeed * dt; 
+          x += Math.floor(heroSpeed * dt); 
           if (x > max_x){x = max_x;} 
 
           // if no colldown hero fire, then trigger first pos of fire laser
@@ -58,13 +58,13 @@
         } else {
           // left alone
           if (keyLeft){
-            x -= heroSpeed * dt;
+            x -= Math.floor(heroSpeed * dt); 
             if (x < 0){x = 0;} 
           }
             
           // right alone
           if (keyRight){
-            x += heroSpeed * dt; 
+            x += Math.floor(heroSpeed * dt); 
             if (x > max_x){x = max_x;} 
           } 
             
@@ -78,12 +78,12 @@
           }
         }
       } // end Test Keyboard combination
-      
+                        
       // Calculate new hero fire position
       // -------------------------------- 
       for(let i = 0; i < arrayLaser.length; i++){ 
-      // ctx.drawImage(userLaser, 40, 173, 15, 31,laserX, laserY,15,31); 
-      arrayLaser[i].laserY = arrayLaser[i].laserY - userLaserSpeed * dt; 
+        // ctx.drawImage(userLaser, 40, 173, 15, 31,laserX, laserY,15,31); 
+        arrayLaser[i].laserY = arrayLaser[i].laserY - Math.floor(userLaserSpeed * dt);         
       } 
       
       } // end function heroKeyboardMoveAndFire()
@@ -246,7 +246,7 @@
   keyLeft = false;
   }
   });
-  
+   
   // start Game
   document.querySelector(".btn_run").addEventListener("click", () =>{ 
   
@@ -265,8 +265,7 @@
     // to keep same speed in all computer
     // all moving element defined variable speed will multiply the dt in the update code... 
     dt = (hrt - last) / 1000; 
-    update();
-    
+    update();      
     draw(); 
     
     // for dt calcul
