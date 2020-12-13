@@ -34,7 +34,7 @@
         
         // if no colldown hero fire, then trigger first pos of fire laser
         if (!isHeroFireCoolDown()){          
-          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - 10);
+          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 21), y - 20);
           arrayLaser.push(newObjUserLaser); 
           // for cooldown Hero Fire calculation  
           lastHeroFireTime = performance.now();          
@@ -49,7 +49,7 @@
 
           // if no colldown hero fire, then trigger first pos of fire laser
           if (!isHeroFireCoolDown()){
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - 10);
+            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 21), y - 20);
             arrayLaser.push(newObjUserLaser); 
             // for cooldown Hero Fire calculation  
             lastHeroFireTime = performance.now();  
@@ -71,7 +71,7 @@
           // fire alone (only space bar without moving hero)
           // if no colldown hero fire, then trigger first pos of fire laser
           if(keySpace && !isHeroFireCoolDown()){ 
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 7), y - 10);
+            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 21), y - 20);
             arrayLaser.push(newObjUserLaser); 
             // for cooldown Hero Fire calculation  
             lastHeroFireTime = performance.now();  
@@ -142,7 +142,7 @@
     // middle laser
     // ctx.drawImage(userLaser, 40, 173, 15, 31,arrayLaser[i].laserX, arrayLaser[i].laserY,15,31); 
     // long laser
-    ctx.drawImage(userLaser, 246, 230, 10, 47,arrayLaser[i].laserX, arrayLaser[i].laserY,10,47); 
+    ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].laserX, arrayLaser[i].laserY,42,72); 
 
     } 
   } // end draw
@@ -268,6 +268,12 @@
     update();      
     draw(); 
     
+    /*
+    if(arrayLaser.length > 0){
+      console.log(newObjUserLaser); 
+    }
+    */
+
     // for dt calcul
     // hrt is ..
     last = hrt;
