@@ -132,6 +132,9 @@
   function draw(){ 
     // clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
+
+    // draw stars background
+    drawStarsBackGround();
     
     // draw spaceship at current position
     ctx.drawImage(spaceship, x, y); 
@@ -156,6 +159,32 @@
   const ctx = canvas.getContext("2d"); 
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+
+  // set up stars
+  let stars = [];
+  let star = {x:0, y:0};  
+  nbStars = 100;
+
+  function setUpStarsBackGround(){
+    // To create the stars themselves, we’ll create a simple loop 
+    // that draws 1 pixel × 1 pixel squares randomly within the limits of the canvas 
+    for (let i = 0; i < nbStars; i++) {
+      let xx = Math.random() * canvas.offsetWidth;      
+      let yy = Math.random() * canvas.offsetHeight;
+      stars.push({x : xx, y : yy});
+    }
+  }
+  
+  function drawStarsBackGround(){            
+    for (let i = 0; i < stars.length; i++) {
+      ctx.fillStyle = "white";
+      ctx.fillRect(stars[i].x, stars[i].y, 1, 1);
+    }
+  }
+
+  setUpStarsBackGround();  
+  drawStarsBackGround();
+
   // ___________________________________
   // setting up the Game Global variables
   // ___________________________________
