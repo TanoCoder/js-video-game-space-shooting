@@ -195,6 +195,11 @@
   let last;
   let hrt;
 
+  // state of the Game
+  let gameStatus = 'notYetStarted';
+  let divRun = document.getElementById("div_run");
+  let divRunPos = divRun.getBoundingClientRect();
+
   // HERO Spaceship
   // --------------
   const spaceship = new Image();
@@ -276,11 +281,18 @@
   }
   });
    
-  // start Game
-  document.querySelector(".btn_run").addEventListener("click", () =>{ 
-  
-  const run = document.querySelector(".btn_run");
-  run.style.display = 'none';
+  // Event listenner to start the Game
+  document.querySelector(".btn_run").addEventListener("click", () =>{     
+    gameStatus = 'start';    
+    hideRunBtn();
+    //calling game loop
+    window.requestAnimationFrame(gameLoop);  
+  });    
+
+  function hideRunBtn(){
+    const run = document.querySelector(".btn_run");
+    run.style.display = 'none';
+  }
   
   // Delta Time init var
   dt = 0;
@@ -288,31 +300,43 @@
   // Game loop frame by frame
   // ------------------------
   function gameLoop(hrt) { 
-    // hrt est le timestamp du callback de requestAnimationFrame(gameloop) 
+    //console.log(gameStatus);
 
-    // Delta Time
-    // to keep same speed in all computer
-    // all moving element defined variable speed will multiply the dt in the update code... 
-    dt = (hrt - last) / 1000; 
-    update();      
-    draw(); 
-    
-    /*
-    if(arrayLaser.length > 0){
-      console.log(newObjUserLaser); 
-    }
-    */
+      if (gameStatus == 'notYetStarted'){                           
+          for(let i = 0; i < arrayLaser.length; i++){ 
+            if ((arrayLaser[i].laserY < divRunPos.bottom) && (arrayLaser[i].laserX > divRunPos.left) && (arrayLaser[i].laserX < divRunPos.right)){
+              //hit run btn
+              hideRunBtn();
+              gameStatus = 'start';
+            }
+          }
 
-    // for dt calcul
-    // hrt is ..
-    last = hrt;
+      }
     
-    window.requestAnimationFrame(gameLoop); 
-  } 
+      // hrt est le timestamp du callback de requestAnimationFrame(gameloop) 
+
+      // Delta Time
+      // to keep same speed in all computer
+      // all moving element defined variable speed will multiply the dt in the update code... 
+      dt = (hrt - last) / 1000; 
+      update();      
+      draw(); 
+      
+      /*
+      if(arrayLaser.length > 0){
+        console.log(newObjUserLaser); 
+      }
+      */
+
+      // for dt calcul
+      // hrt is ..
+      last = hrt;
+     
+    window.requestAnimationFrame(gameLoop);      
+    
+  }  
   
   // 1st time calling game loop
-  window.requestAnimationFrame(gameLoop);
-  
-  }); // end run
-  
-  })();
+  window.requestAnimationFrame(gameLoop);  
+    
+})();
