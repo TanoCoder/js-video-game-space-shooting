@@ -32,15 +32,24 @@ To make this game, you need :
 - Rank the scores in order from highest to lowest
 
 ### Images Credits
+
+- Background
+  Tano 
+
+- Explosion on Run Button
+  Author: JROB774
+  profil: https://opengameart.org/users/jrob774
+  License(s): CC-BY 3.0
+
 - spaceship hero
- Author: Skorpio
- profil: https://opengameart.org/users/skorpio
+  Author: Skorpio
+  profil: https://opengameart.org/users/skorpio
 
 - spaceship enemies
 
 - lasers-and-beams
- Author: Rawdanitsu
- profil: https://opengameart.org/users/rawdanitsu
+  Author: Rawdanitsu
+  profil: https://opengameart.org/users/rawdanitsu
 
 
 ### Game developer :

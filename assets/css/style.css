@@ -14,12 +14,12 @@ canvas {
 
 #gameContainer {
   width: 100%;
-  height: auto;
+  height: 100%;
 }
 
 .btn_run {
   position: fixed;
-  top: 50%;
+  top: 40%;
   left: 43%;
   width: 12%;
   height: 10%;

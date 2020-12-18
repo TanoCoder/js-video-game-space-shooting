@@ -132,7 +132,12 @@
   function draw(){ 
     // clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
-
+    
+    // draw to maintain img explode run
+    if (drawExplodeRun){      
+      ctx.drawImage(explodeRunBtn, spriteExplodeX, 0, 95, 96, explodeX, explodeY, 200,200);
+    }
+    
     // draw stars background
     drawStarsBackGround();
     
@@ -146,8 +151,26 @@
     // ctx.drawImage(userLaser, 40, 173, 15, 31,arrayLaser[i].laserX, arrayLaser[i].laserY,15,31); 
     // long laser
     ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].laserX, arrayLaser[i].laserY,42,72); 
-
     } 
+    
+    // draw run btn explode
+    if (drawExplodeRun){
+      if (accudeltaTime > minSpeedExplodeAnimationForRunBtn){     
+        ctx.drawImage(explodeRunBtn, spriteExplodeX, 0, 95, 96, explodeX, explodeY, 200,200);
+
+        numframeExplodeRun++;
+        spriteExplodeX += 95;  
+        accudeltaTime = 0;
+        if (spriteExplodeX > 1172){
+          drawExplodeRun = false;
+        }
+      } else {
+        accudeltaTime += dt;
+      }
+
+    }
+
+
   } // end draw
   
   // ________________
@@ -159,7 +182,7 @@
   const ctx = canvas.getContext("2d"); 
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-
+  
   // set up stars
   let stars = [];
   let star = {x:0, y:0};  
@@ -200,6 +223,19 @@
   let divRun = document.getElementById("div_run");
   let divRunPos = divRun.getBoundingClientRect();
 
+  // Explode Run Btn
+  // ---------------
+  const explodeRunBtn = new Image();
+  explodeRunBtn.src = "assets/img/explode.png";  
+
+  let explodeX;
+  let explodeY;
+  let drawExplodeRun = false;
+  let numframeExplodeRun = 1;
+  let spriteExplodeX = 0;  
+  let accudeltaTime = 0;
+  let minSpeedExplodeAnimationForRunBtn = 0.1; // pour gérer la vitesse d'exécution frame by frame du sprite.
+
   // HERO Spaceship
   // --------------
   const spaceship = new Image();
@@ -232,21 +268,32 @@
   let now;
   
   // init spaceship image
-  // --------------------
-  spaceship.onload = () => { 
-  max_x = (canvas.width - spaceship.width);
-  x = ((canvas.width - spaceship.width) / 2);
-  y = (canvas.height - spaceship.height - 10); 
-  ctx.drawImage(spaceship, x, y);
-  // init userLaser image
-  // -------------------- 
-  userLaser.onload = function () { 
-  // implementation 
-  // init but do not draw now, we have not yet shoot ;-) 
-  } // end userLaser.onload  
-  } // end spaceship.onload 
+  // --------------------        
+    spaceship.onload = () => {   
+      max_x = (canvas.width - spaceship.width);
+      x = ((canvas.width - spaceship.width) / 2);
+      y = (canvas.height - spaceship.height - 10); 
+      ctx.drawImage(spaceship, x, y);
+
+      // init userLaser image
+      // -------------------- 
+      userLaser.onload = function () {  
+        // implementation 
+        // init but do not draw now, we have not yet shoot ;-) 
+      } // end userLaser.onload  
+
+      // init explodeRunBtn image
+      // ------------------------
+      explodeRunBtn.onload = function () {  
+        // implementation 
+        // init but do not draw now            
+         //ctx.drawImage(explodeRunBtn, 10, 10, 78, 96,10, 10,78,96);       
+         //ctx.drawImage(explodeRunBtn, 10, 10); 
+      }
+    } // end spaceship.onload 
   
   
+
   // init for keyboard management
   const KEY_LEFT = "ArrowLeft";
   const KEY_RIGHT = "ArrowRight";
@@ -293,32 +340,40 @@
     const run = document.querySelector(".btn_run");
     run.style.display = 'none';
   }
-  
+
   // Delta Time init var
   dt = 0;
   last = performance.now();
+
   // Game loop frame by frame
   // ------------------------
   function gameLoop(hrt) { 
-    //console.log(gameStatus);
-
-      if (gameStatus == 'notYetStarted'){                           
-          for(let i = 0; i < arrayLaser.length; i++){ 
-            if ((arrayLaser[i].laserY < divRunPos.bottom) && (arrayLaser[i].laserX > divRunPos.left) && (arrayLaser[i].laserX < divRunPos.right)){
-              //hit run btn
-              hideRunBtn();
-              gameStatus = 'start';
-            }
-          }
-
-      }
-    
-      // hrt est le timestamp du callback de requestAnimationFrame(gameloop) 
+    // hrt est le timestamp du callback de requestAnimationFrame(gameloop) 
 
       // Delta Time
       // to keep same speed in all computer
       // all moving element defined variable speed will multiply the dt in the update code... 
       dt = (hrt - last) / 1000; 
+          
+    //console.log(gameStatus);
+
+      if (gameStatus == 'notYetStarted'){                           
+          for(let i = 0; i < arrayLaser.length; i++){ 
+            if ((arrayLaser[i].laserY < divRunPos.bottom) && (arrayLaser[i].laserX > divRunPos.left) && (arrayLaser[i].laserX < divRunPos.right)){
+              //hit run btn              
+              explodeX = ((canvas.width - 200) / 2);
+              explodeY = divRunPos.top;  
+              hideRunBtn();                            
+              gameStatus = 'start';              
+              arrayLaser.splice(i,1);               
+              accudeltaTime = dt;
+              drawExplodeRun = true;
+            }           
+
+          }
+
+      }
+          
       update();      
       draw(); 
       
