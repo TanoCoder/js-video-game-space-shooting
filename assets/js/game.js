@@ -153,8 +153,8 @@
     ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].laserX, arrayLaser[i].laserY,42,72); 
     } 
     
-    // draw run btn explode
-    if (drawExplodeRun){
+    // draw run btn explode    
+    if (drawExplodeRun){                
       if (accudeltaTime > minSpeedExplodeAnimationForRunBtn){     
         ctx.drawImage(explodeRunBtn, spriteExplodeX, 0, 95, 96, explodeX, explodeY, 200,200);
 
@@ -163,6 +163,7 @@
         accudeltaTime = 0;
         if (spriteExplodeX > 1172){
           drawExplodeRun = false;
+          gameStatus = 'start';
         }
       } else {
         accudeltaTime += dt;
@@ -228,8 +229,8 @@
   const explodeRunBtn = new Image();
   explodeRunBtn.src = "assets/img/explode.png";  
 
-  let explodeX;
-  let explodeY;
+  let explodeX = ((canvas.width - 200) / 2);
+  let explodeY = divRunPos.top;  
   let drawExplodeRun = false;
   let numframeExplodeRun = 1;
   let spriteExplodeX = 0;  
@@ -329,10 +330,11 @@
   });
    
   // Event listenner to start the Game
-  document.querySelector(".btn_run").addEventListener("click", () =>{     
-    gameStatus = 'start';    
+  document.querySelector(".btn_run").addEventListener("click", () =>{             
     hideRunBtn();
-    //calling game loop
+    // we can draw a little explosion for this event click ;-)
+    drawExplodeRun = true;
+    //calling game loop    
     window.requestAnimationFrame(gameLoop);  
   });    
 
@@ -360,9 +362,7 @@
       if (gameStatus == 'notYetStarted'){                           
           for(let i = 0; i < arrayLaser.length; i++){ 
             if ((arrayLaser[i].laserY < divRunPos.bottom) && (arrayLaser[i].laserX > divRunPos.left) && (arrayLaser[i].laserX < divRunPos.right)){
-              //hit run btn              
-              explodeX = ((canvas.width - 200) / 2);
-              explodeY = divRunPos.top;  
+              //hit run btn                            
               hideRunBtn();                            
               gameStatus = 'start';              
               arrayLaser.splice(i,1);               
