@@ -1,4 +1,4 @@
-(() => { 
+﻿(() => { 
   // _________
   // functions
   // _________
@@ -121,9 +121,25 @@
       // ... to be done ...
       
       } // end function outOfScreenGarbageCollector()
+
+      function enemiesMove(){        
+        enemies.forEach( (item) => {                          
+          //alert("arrivé ici");
+          item.x = item.x + (item.speed * dt);
+          item.y = item.y + (item.speed * dt);       
+
+
+
+        });
+      }
       
       heroKeyboardMoveAndFire(); 
       outOfScreenGarbageCollector();
+
+      if (gameStatus == 'start'){
+        enemiesMove();
+      }
+      
     
   } // end update
 
@@ -143,6 +159,7 @@
     
     // draw spaceship at current position
     ctx.drawImage(spaceship, x, y); 
+    //ctx.drawImage(spaceship, 0, 0, 170, 102, x, y, 80, 50);
     
     // draw userLaser
     for(let i = 0; i < arrayLaser.length; i++){ 
@@ -168,9 +185,16 @@
       } else {
         accudeltaTime += dt;
       }
-
     }
 
+    // draw enemies
+    if (gameStatus == 'start'){
+      enemies.forEach( (item) => {
+        //ctx.drawImage(imgEnemy, item.x, item.y); 
+        ctx.drawImage(imgEnemy, 0, 0, 134, 199, item.x, item.y, 70, 100); 
+      });  
+    }
+    
 
   } // end draw
   
@@ -245,8 +269,8 @@
   let x;
   let y;
   let heroSpeed = 500;
-  // global user laser beam
-  // ----------------------
+  // user laser beam
+  // ---------------
   const userLaser = new Image();
   userLaser.src = "assets/img/beams.png"; 
   let userLaserSpeed = 600;
@@ -262,11 +286,43 @@
   let isUserLaserOutOfScreen = false;
   let index = [];
   let cptUserLaserOutOfScreen;
+  
   // cool down Hero fire
   // -------------------
   let coolDownHeroFireTime = 250; // Time of disability to Fire (to avoid gusts [des rafales de tirs non stop])
   let lastHeroFireTime = -250;
   let now;
+
+  // enemies
+  // -------
+  // image
+  const imgEnemy = new Image();
+  imgEnemy.src = "assets/img/enemy.png"; 
+
+  // class object
+  class Enemy {
+    constructor(x, y) {
+    this.x = x;
+    this.y = y;   
+    this.speed = 200;    
+    }
+  }   
+
+  // vector
+  let enemies = [];
+
+  // initial enemies and position to start the game
+  let initialEnemyX = (canvas.width / 10) - 70;  
+  let initialEnemyY = -100;
+
+  for (let i = 0; i <=9; i++){
+    let objEnemy = new Enemy(initialEnemyX, Math.floor(Math.random() * -100));
+    enemies.push(objEnemy);
+    initialEnemyX += 100;    
+    initialEnemyY = Math.floor(Math.random() * -100);
+  }
+
+
   
   // init spaceship image
   // --------------------        
@@ -291,6 +347,14 @@
          //ctx.drawImage(explodeRunBtn, 10, 10, 78, 96,10, 10,78,96);       
          //ctx.drawImage(explodeRunBtn, 10, 10); 
       }
+
+      // init enemy image
+      // ------------------------
+      imgEnemy.onload = function () {  
+        // implementation 
+        // init but do not draw now         
+      }
+
     } // end spaceship.onload 
   
   
@@ -384,7 +448,7 @@
       */
 
       // for dt calcul
-      // hrt is ..
+      // hrt is last time when requestAnimationFrame was called
       last = hrt;
      
     window.requestAnimationFrame(gameLoop);      
