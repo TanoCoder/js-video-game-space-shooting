@@ -2,12 +2,9 @@
 
 [Web GitHub Page: https://gaetano-di-salvo.github.io/js-video-game-space-shooting/](https://gaetano-di-salvo.github.io/js-video-game-space-shooting/)
 
-
-Make a shooting game in javascript(canvas).
+Space Shooting Game in javascript(canvas).
 
 ## The elements
-
-To make this game, you need :
 
 - A shape or an image representing a cannon
 - A shape or an image representing a projectile
@@ -41,13 +38,11 @@ To make this game, you need :
   profil: https://opengameart.org/users/jrob774
   License(s): CC-BY 3.0
 
-- spaceship hero
+- Spaceship Hero & Enemies
   Author: Skorpio
   profil: https://opengameart.org/users/skorpio
 
-- spaceship enemies
-
-- lasers-and-beams
+- Lasers Beams
   Author: Rawdanitsu
   profil: https://opengameart.org/users/rawdanitsu
 

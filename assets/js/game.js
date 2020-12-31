@@ -6,6 +6,7 @@
   // update current frame
   // --------------------
   function update(){
+    //console.log(enemies.length);
   
     function heroKeyboardMoveAndFire(){
       
@@ -125,19 +126,35 @@
       function enemiesMove(){        
         enemies.forEach( (item) => {                          
           //alert("arrivé ici");
-          item.x = item.x + (item.speed * dt);
-          item.y = item.y + (item.speed * dt);       
+          //item.x = item.x + (item.speed * dt);
+          item.y = item.y + (item.speed * dt);   
 
-
-
+          // check if enemy[current item] is out of the screen
+          if(item.y > canvas.height){
+            item.y = getRandom(-1000, -100);
+          }
         });
       }
       
+      function collisionsDetection(){
+
+        // user laser collisions detection into enemies
+        // ---------------------------------------
+
+        // Hero spaceship collision detection into enemies 
+        // -----------------------------------------------
+
+        // enemies laser collisions detection into Hero
+        // --------------------------------------------
+
+      }
+
       heroKeyboardMoveAndFire(); 
       outOfScreenGarbageCollector();
 
       if (gameStatus == 'start'){
-        enemiesMove();
+        enemiesMove();  
+        collisionsDetection();      
       }
       
     
@@ -248,13 +265,18 @@
   let divRun = document.getElementById("div_run");
   let divRunPos = divRun.getBoundingClientRect();
 
+  // random
+  function getRandom(min, max) {
+    return Math.floor(Math.random() * (max - min + 1) ) + min;
+  }
+
   // Explode Run Btn
   // ---------------
   const explodeRunBtn = new Image();
   explodeRunBtn.src = "assets/img/explode.png";  
 
   let explodeX = ((canvas.width - 200) / 2);
-  let explodeY = divRunPos.top;  
+  let explodeY = divRunPos.top - (96 / 2);
   let drawExplodeRun = false;
   let numframeExplodeRun = 1;
   let spriteExplodeX = 0;  
@@ -304,7 +326,7 @@
     constructor(x, y) {
     this.x = x;
     this.y = y;   
-    this.speed = 200;    
+    this.speed = 100;    
     }
   }   
 
@@ -312,14 +334,14 @@
   let enemies = [];
 
   // initial enemies and position to start the game
-  let initialEnemyX = (canvas.width / 10) - 70;  
-  let initialEnemyY = -100;
+  let initialEnemyX = 10;  
+  let initialEnemyY;
 
   for (let i = 0; i <=9; i++){
-    let objEnemy = new Enemy(initialEnemyX, Math.floor(Math.random() * -100));
+    let objEnemy = new Enemy(initialEnemyX, getRandom(-1000,-100));
     enemies.push(objEnemy);
-    initialEnemyX += 100;    
-    initialEnemyY = Math.floor(Math.random() * -100);
+    initialEnemyX += 140;    
+    initialEnemyY = getRandom(-1000,-100);
   }
 
 
