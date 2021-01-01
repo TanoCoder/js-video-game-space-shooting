@@ -334,14 +334,14 @@
   let enemies = [];
 
   // initial enemies and position to start the game
-  let initialEnemyX = 10;  
+  let initialEnemyX = (80 / 2) + 10;  
   let initialEnemyY;
 
   for (let i = 0; i <=9; i++){
-    let objEnemy = new Enemy(initialEnemyX, getRandom(-1000,-100));
+    let objEnemy = new Enemy(initialEnemyX, getRandom(-100,-100));
     enemies.push(objEnemy);
-    initialEnemyX += 140;    
-    initialEnemyY = getRandom(-1000,-100);
+    initialEnemyX += 130;    
+    //initialEnemyY = getRandom(-100,-100);
   }
 
 
