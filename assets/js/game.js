@@ -35,7 +35,7 @@
         
         // if no colldown hero fire, then trigger first pos of fire laser
         if (!isHeroFireCoolDown()){          
-          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 21), y - 20);
+          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 40), y - 35);
           arrayLaser.push(newObjUserLaser); 
           // for cooldown Hero Fire calculation  
           lastHeroFireTime = performance.now();          
@@ -50,7 +50,7 @@
 
           // if no colldown hero fire, then trigger first pos of fire laser
           if (!isHeroFireCoolDown()){
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 21), y - 20);
+            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 40), y - 35);
             arrayLaser.push(newObjUserLaser); 
             // for cooldown Hero Fire calculation  
             lastHeroFireTime = performance.now();  
@@ -72,7 +72,7 @@
           // fire alone (only space bar without moving hero)
           // if no colldown hero fire, then trigger first pos of fire laser
           if(keySpace && !isHeroFireCoolDown()){ 
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 21), y - 20);
+            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 40), y - 35);
             arrayLaser.push(newObjUserLaser); 
             // for cooldown Hero Fire calculation  
             lastHeroFireTime = performance.now();  
@@ -80,8 +80,8 @@
         }
       } // end Test Keyboard combination
                         
-      // Calculate new hero fire position
-      // -------------------------------- 
+      // Calculate new hero fire laser position
+      // -------------------------------------- 
       for(let i = 0; i < arrayLaser.length; i++){ 
         // ctx.drawImage(userLaser, 40, 173, 15, 31,laserX, laserY,15,31); 
         arrayLaser[i].laserY = arrayLaser[i].laserY - Math.floor(userLaserSpeed * dt);         
@@ -89,32 +89,33 @@
       
       } // end function heroKeyboardMoveAndFire()
       function outOfScreenGarbageCollector(){
-      
-      // for Hero laser fire
-      // ------------------- 
+
+      // detect and delete Hero laser fire out of the screen        
+      // ---------------------------------------------------
       isUserLaserOutOfScreen = false;
       index = [];
       cptUserLaserOutOfScreen = 0;
       
       for(let i = 0; i < arrayLaser.length; i++){ 
-      if (arrayLaser[i].laserY < 0){
-      isUserLaserOutOfScreen = true;
+        if (arrayLaser[i].laserY < 0){
+          isUserLaserOutOfScreen = true;
       
-      // si le game loop à du mal à suivre la cadence
-      // ici on n'oublie aucun tir en dehors de l'écran
-      index[cptUserLaserOutOfScreen] = i;
-      cptUserLaserOutOfScreen++;
-      }
+          // si le game loop à du mal à suivre la cadence
+          // ici on n'oublie aucun tir en dehors de l'écran
+          index[cptUserLaserOutOfScreen] = i;
+          cptUserLaserOutOfScreen++;
+        }
       } 
+      
       if (isUserLaserOutOfScreen){
-      for (let j = 0; j < cptUserLaserOutOfScreen ; j++){
-      // si le game loop à du mal à suivre la cadence
-      // ici on supprime tous les tirs qui sont en dehors de l'écran.
-      // pour maintenir à jour la taille du vecteur de tir, 
-      // sinon il grandit à l'infini et risque de faire planter l'application.
-      arrayLaser.splice(index[j], 1); 
-      } 
-      isUserLaserOutOfScreen = false;
+        for (let j = 0; j < cptUserLaserOutOfScreen ; j++){
+        // si le game loop à du mal à suivre la cadence
+        // ici on supprime tous les tirs qui sont en dehors de l'écran.
+        // pour maintenir à jour la taille du vecteur de tir, 
+        // sinon il grandit à l'infini et risque de faire planter l'application.
+        arrayLaser.splice(index[j], 1); 
+        } 
+        isUserLaserOutOfScreen = false;
       }
       
       // for Enemies
@@ -124,14 +125,13 @@
       } // end function outOfScreenGarbageCollector()
 
       function enemiesMove(){        
-        enemies.forEach( (item) => {                          
-          //alert("arrivé ici");
+        enemies.forEach( (item) => {                                    
           //item.x = item.x + (item.speed * dt);
           item.y = item.y + (item.speed * dt);   
 
           // check if enemy[current item] is out of the screen
           if(item.y > canvas.height){
-            item.y = getRandom(-1000, -100);
+            item.y = getRandom(-1000, -120);
           }
         });
       }
@@ -139,7 +139,10 @@
       function collisionsDetection(){
 
         // user laser collisions detection into enemies
-        // ---------------------------------------
+        // --------------------------------------------
+           // ici prob bug les laser tiré apparaisse ailleurs !!j'ai donc suprimer le code
+           // qui balay arr laser at arr enemies !!!
+
 
         // Hero spaceship collision detection into enemies 
         // -----------------------------------------------
@@ -175,8 +178,8 @@
     drawStarsBackGround();
     
     // draw spaceship at current position
-    ctx.drawImage(spaceship, x, y); 
-    //ctx.drawImage(spaceship, 0, 0, 170, 102, x, y, 80, 50);
+    //ctx.drawImage(spaceship, x, y); 
+    ctx.drawImage(spaceship, 0, 0, 170, 102, x, y, 130, 80);
     
     // draw userLaser
     for(let i = 0; i < arrayLaser.length; i++){ 
@@ -184,7 +187,7 @@
     // middle laser
     // ctx.drawImage(userLaser, 40, 173, 15, 31,arrayLaser[i].laserX, arrayLaser[i].laserY,15,31); 
     // long laser
-    ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].laserX, arrayLaser[i].laserY,42,72); 
+    ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].laserX, arrayLaser[i].laserY,42,72);     
     } 
     
     // draw run btn explode    
@@ -326,7 +329,7 @@
     constructor(x, y) {
     this.x = x;
     this.y = y;   
-    this.speed = 100;    
+    this.speed = 200;    
     }
   }   
 
@@ -335,15 +338,24 @@
 
   // initial enemies and position to start the game
   let initialEnemyX = (80 / 2) + 10;  
-  let initialEnemyY;
+  let initialEnemyY = -900;
 
-  for (let i = 0; i <=9; i++){
-    let objEnemy = new Enemy(initialEnemyX, getRandom(-100,-100));
+  for (let i = 0; i <=4; i++){
+    let objEnemy = new Enemy(initialEnemyX, initialEnemyY);
     enemies.push(objEnemy);
     initialEnemyX += 130;    
-    //initialEnemyY = getRandom(-100,-100);
+    initialEnemyY = initialEnemyY + 100;
   }
 
+  initialEnemyX = canvas.width - 130;
+  initialEnemyY = -900;
+
+  for (let i = 5; i <=9; i++){
+    let objEnemy = new Enemy(initialEnemyX, initialEnemyY);
+    enemies.push(objEnemy);
+    initialEnemyX -= 130;    
+    initialEnemyY = initialEnemyY + 100;
+  }
 
   
   // init spaceship image
@@ -378,7 +390,6 @@
       }
 
     } // end spaceship.onload 
-  
   
 
   // init for keyboard management
@@ -461,7 +472,7 @@
       }
           
       update();      
-      draw(); 
+      draw();       
       
       /*
       if(arrayLaser.length > 0){
