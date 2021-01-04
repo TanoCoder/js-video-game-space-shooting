@@ -83,8 +83,8 @@
       // Calculate new hero fire laser position
       // -------------------------------------- 
       for(let i = 0; i < arrayLaser.length; i++){ 
-        // ctx.drawImage(userLaser, 40, 173, 15, 31,laserX, laserY,15,31); 
-        arrayLaser[i].laserY = arrayLaser[i].laserY - Math.floor(userLaserSpeed * dt);         
+        // ctx.drawImage(userLaser, 40, 173, 15, 31, x, y,15,31); 
+        arrayLaser[i].y = arrayLaser[i].y - Math.floor(userLaserSpeed * dt);         
       } 
       
       } // end function heroKeyboardMoveAndFire()
@@ -97,7 +97,7 @@
       cptUserLaserOutOfScreen = 0;
       
       for(let i = 0; i < arrayLaser.length; i++){ 
-        if (arrayLaser[i].laserY < 0){
+        if (arrayLaser[i].y < 0){
           isUserLaserOutOfScreen = true;
       
           // si le game loop à du mal à suivre la cadence
@@ -116,12 +116,9 @@
         arrayLaser.splice(index[j], 1); 
         } 
         isUserLaserOutOfScreen = false;
-      }
+      }  
       
-      // for Enemies
-      // -----------
-      // ... to be done ...
-      
+            
       } // end function outOfScreenGarbageCollector()
 
       function enemiesMove(){        
@@ -138,11 +135,23 @@
       
       function collisionsDetection(){
 
-        // user laser collisions detection into enemies
-        // --------------------------------------------
-           // ici prob bug les laser tiré apparaisse ailleurs !!j'ai donc suprimer le code
-           // qui balay arr laser at arr enemies !!!
+        // reset enemies isExploding to false
+        enemies.forEach( e =>{
+          e.isExploding = false;
+        });
 
+        // user laser collisions detection into enemies
+        // --------------------------------------------           
+           arrayLaser.forEach( l => {
+            //alert(l.x + ' : ' + l.y);
+            enemies.forEach( e =>{
+              //alert(e.x + ' : ' + e.y);
+              if((l.x >= e.x - 20) && (l.x <= e.x + 70 -10) && (l.y <= e.y + 100 / 2)){
+                e.isExploding = true;
+                arrayLaser.splice(arrayLaser.indexOf(l),1);
+              }
+            });   
+           });
 
         // Hero spaceship collision detection into enemies 
         // -----------------------------------------------
@@ -156,6 +165,13 @@
       outOfScreenGarbageCollector();
 
       if (gameStatus == 'start'){
+
+        while (enemies.length < 10){
+          objEnemy = new Enemy(getRandom(50, canvas.width - 90), getRandom(-1000, -120));
+          enemies.push(objEnemy);          
+          //console.log('after add new Enemies: ' + enemies.length);
+        }       
+
         enemiesMove();  
         collisionsDetection();      
       }
@@ -168,30 +184,15 @@
   function draw(){ 
     // clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
-    
-    // draw to maintain img explode run
-    if (drawExplodeRun){      
-      ctx.drawImage(explodeRunBtn, spriteExplodeX, 0, 95, 96, explodeX, explodeY, 200,200);
-    }
-    
+
     // draw stars background
     drawStarsBackGround();
     
-    // draw spaceship at current position
-    //ctx.drawImage(spaceship, x, y); 
-    ctx.drawImage(spaceship, 0, 0, 170, 102, x, y, 130, 80);
-    
-    // draw userLaser
-    for(let i = 0; i < arrayLaser.length; i++){ 
-    // ctx.drawImage(userLaser, 40, 173, 15, 31,laserX, laserY,15,31); 
-    // middle laser
-    // ctx.drawImage(userLaser, 40, 173, 15, 31,arrayLaser[i].laserX, arrayLaser[i].laserY,15,31); 
-    // long laser
-    ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].laserX, arrayLaser[i].laserY,42,72);     
-    } 
-    
     // draw run btn explode    
     if (drawExplodeRun){                
+      // draw to maintain img explode run    
+      ctx.drawImage(explodeRunBtn, spriteExplodeX, 0, 95, 96, explodeX, explodeY, 200,200);
+    
       if (accudeltaTime > minSpeedExplodeAnimationForRunBtn){     
         ctx.drawImage(explodeRunBtn, spriteExplodeX, 0, 95, 96, explodeX, explodeY, 200,200);
 
@@ -208,13 +209,38 @@
     }
 
     // draw enemies
+    // ------------
     if (gameStatus == 'start'){
-      enemies.forEach( (item) => {
-        //ctx.drawImage(imgEnemy, item.x, item.y); 
-        ctx.drawImage(imgEnemy, 0, 0, 134, 199, item.x, item.y, 70, 100); 
-      });  
+      
+      enemies.forEach( (en) => {
+        if(!en.isExploding){
+          ctx.drawImage(imgEnemy, 0, 0, 134, 199, en.x, en.y, 70, 100); 
+        } else {
+          // draw explosion
+          // ...
+          //alert('draw explosion');          
+          enemies.splice(enemies.indexOf(en),1);         
+        }       
+      });        
+
+      //console.log('after explosion: ' + enemies.length);
+
     }
-    
+
+    // draw userLaser
+    // --------------
+    for(let i = 0; i < arrayLaser.length; i++){ 
+      // ctx.drawImage(userLaser, 40, 173, 15, 31, x, y,15,31); 
+      // middle laser
+      // ctx.drawImage(userLaser, 40, 173, 15, 31,arrayLaser[i].x, arrayLaser[i].y,15,31); 
+      // long laser
+      ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].x, arrayLaser[i].y,42,72);     
+      } 
+            
+    // draw spaceship at current position
+    //ctx.drawImage(spaceship, x, y); 
+    ctx.drawImage(spaceship, 0, 0, 170, 102, x, y, 130, 80);
+       
 
   } // end draw
   
@@ -298,14 +324,12 @@
   // ---------------
   const userLaser = new Image();
   userLaser.src = "assets/img/beams.png"; 
-  let userLaserSpeed = 600;
-  let laserX;
-  let laserY;
+  let userLaserSpeed = 600; 
   let arrayLaser = [];  
   class objUserLaser {
-    constructor(laserX, laserY) {
-    this.laserX = laserX;
-    this.laserY = laserY;
+    constructor(x, y) {
+    this.x = x;
+    this.y = y;
     }
   }  
   let isUserLaserOutOfScreen = false;
@@ -329,19 +353,21 @@
     constructor(x, y) {
     this.x = x;
     this.y = y;   
-    this.speed = 200;    
+    this.speed = 200;  
+    this.isExploding = false;  
     }
   }   
 
   // vector
   let enemies = [];
+  let objEnemy;
 
   // initial enemies and position to start the game
   let initialEnemyX = (80 / 2) + 10;  
   let initialEnemyY = -900;
 
   for (let i = 0; i <=4; i++){
-    let objEnemy = new Enemy(initialEnemyX, initialEnemyY);
+    objEnemy = new Enemy(initialEnemyX, initialEnemyY);
     enemies.push(objEnemy);
     initialEnemyX += 130;    
     initialEnemyY = initialEnemyY + 100;
@@ -351,7 +377,7 @@
   initialEnemyY = -900;
 
   for (let i = 5; i <=9; i++){
-    let objEnemy = new Enemy(initialEnemyX, initialEnemyY);
+    objEnemy = new Enemy(initialEnemyX, initialEnemyY);
     enemies.push(objEnemy);
     initialEnemyX -= 130;    
     initialEnemyY = initialEnemyY + 100;
@@ -458,7 +484,7 @@
 
       if (gameStatus == 'notYetStarted'){                           
           for(let i = 0; i < arrayLaser.length; i++){ 
-            if ((arrayLaser[i].laserY < divRunPos.bottom) && (arrayLaser[i].laserX > divRunPos.left) && (arrayLaser[i].laserX < divRunPos.right)){
+            if ((arrayLaser[i].y < divRunPos.bottom) && (arrayLaser[i].x > divRunPos.left) && (arrayLaser[i].x < divRunPos.right)){
               //hit run btn                            
               hideRunBtn();                            
               gameStatus = 'start';              
