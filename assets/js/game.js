@@ -338,8 +338,8 @@
   
   // cool down Hero fire
   // -------------------
-  let coolDownHeroFireTime = 250; // Time of disability to Fire (to avoid gusts [des rafales de tirs non stop])
-  let lastHeroFireTime = -250;
+  let coolDownHeroFireTime = 200; // Time of disability to Fire (to avoid gusts [des rafales de tirs non stop])
+  let lastHeroFireTime = -200;
   let now;
 
   // enemies
