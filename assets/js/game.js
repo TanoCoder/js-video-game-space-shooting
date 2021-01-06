@@ -332,8 +332,7 @@
   // HERO Spaceship
   // --------------
   const spaceship = new Image();
-  spaceship.src = "assets/img/hero.png";
-  spaceship.width = 75 * spaceship.width / 100;
+  spaceship.src = "assets/img/hero.png";  
   
   let max_x;
   let x;
@@ -411,6 +410,7 @@
   // init spaceship image
   // --------------------        
     spaceship.onload = () => {   
+      spaceship.width = 75 * spaceship.width / 100;
       max_x = (canvas.width - spaceship.width);
       x = ((canvas.width - spaceship.width) / 2);
       y = (canvas.height - spaceship.height - 10); 
