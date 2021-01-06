@@ -35,7 +35,7 @@
         
         // if no colldown hero fire, then trigger first pos of fire laser
         if (!isHeroFireCoolDown()){          
-          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 40), y - 35);
+          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 20), y - 35);
           arrayLaser.push(newObjUserLaser); 
           // for cooldown Hero Fire calculation  
           lastHeroFireTime = performance.now();          
@@ -50,7 +50,7 @@
 
           // if no colldown hero fire, then trigger first pos of fire laser
           if (!isHeroFireCoolDown()){
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 40), y - 35);
+            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 20), y - 35);
             arrayLaser.push(newObjUserLaser); 
             // for cooldown Hero Fire calculation  
             lastHeroFireTime = performance.now();  
@@ -72,7 +72,7 @@
           // fire alone (only space bar without moving hero)
           // if no colldown hero fire, then trigger first pos of fire laser
           if(keySpace && !isHeroFireCoolDown()){ 
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 40), y - 35);
+            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 20), y - 35);
             arrayLaser.push(newObjUserLaser); 
             // for cooldown Hero Fire calculation  
             lastHeroFireTime = performance.now();  
@@ -88,6 +88,7 @@
       } 
       
       } // end function heroKeyboardMoveAndFire()
+
       function outOfScreenGarbageCollector(){
 
       // detect and delete Hero laser fire out of the screen        
@@ -135,19 +136,12 @@
       
       function collisionsDetection(){
 
-        // reset enemies isExploding to false
-        enemies.forEach( e =>{
-          e.isExploding = false;
-        });
-
         // user laser collisions detection into enemies
         // --------------------------------------------           
-           arrayLaser.forEach( l => {
-            //alert(l.x + ' : ' + l.y);
-            enemies.forEach( e =>{
-              //alert(e.x + ' : ' + e.y);
-              if((l.x >= e.x - 20) && (l.x <= e.x + 70 -10) && (l.y <= e.y + 100 / 2)){
-                e.isExploding = true;
+           arrayLaser.forEach( l => {            
+            enemies.forEach( en =>{              
+              if((l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2)){
+                en.isExploding = true;
                 arrayLaser.splice(arrayLaser.indexOf(l),1);
               }
             });   
@@ -164,12 +158,12 @@
       heroKeyboardMoveAndFire(); 
       outOfScreenGarbageCollector();
 
+      // if game is started
       if (gameStatus == 'start'){
-
-        while (enemies.length < 10){
-          objEnemy = new Enemy(getRandom(50, canvas.width - 90), getRandom(-1000, -120));
-          enemies.push(objEnemy);          
-          //console.log('after add new Enemies: ' + enemies.length);
+        // if arr less than 10 enemies then create new enemies
+        while (enemies.length < 10){          
+          objEnemy = new Enemy(getRandom(10, canvas.width - 70), getRandom(-1000, -120));          
+          enemies.push(objEnemy);                    
         }       
 
         enemiesMove();  
@@ -182,6 +176,44 @@
   // draw current frame
   // ------------------
   function draw(){ 
+
+    function drawEnemy(){
+      enemies.forEach( (en) => {
+        if(!en.isExploding){
+          ctx.drawImage(imgEnemy, 0, 0, 134, 199, en.x, en.y, 70, 100); 
+        }
+      });        
+    }
+    
+    function drawEnemyExplode(){
+            
+      enemies.forEach( (en) => {
+        if(en.isExploding){          
+          // draw to maintain img explode run    
+          ctx.drawImage(explodeRunBtn, en.spriteExplodeX, 0, en.spriteExplodeSingleFrameWidth, 96, en.x, en.y, 100, 100);
+                    
+          if (accudeltaTime > en.spriteExplodeSpeedFrame){     
+            ctx.drawImage(explodeRunBtn, en.spriteExplodeX, 0, en.spriteExplodeSingleFrameWidth, 96, en.x, en.y, 100, 100);           
+    
+            en.spriteExplodeCountCurrentFrame++;
+            en.spriteExplodeX += en.spriteExplodeSingleFrameWidth;  
+                        
+            accudeltaTime = 0;            
+
+            if (en.spriteExplodeCountCurrentFrame > 12){                 
+              // end of width file image : no more frame to show from the sprite file.
+              accudeltaTime = 0;  
+              en.spriteExplodeX = 0;  
+              enemies.splice(enemies.indexOf(en),1);            
+            }
+
+          } else {
+            accudeltaTime += dt;
+          }
+        }
+      });   
+    }     
+    
     // clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
 
@@ -202,6 +234,8 @@
         if (spriteExplodeX > 1172){
           drawExplodeRun = false;
           gameStatus = 'start';
+          accudeltaTime = 0;  
+          spriteExplodeX = 0;    
         }
       } else {
         accudeltaTime += dt;
@@ -211,34 +245,17 @@
     // draw enemies
     // ------------
     if (gameStatus == 'start'){
-      
-      enemies.forEach( (en) => {
-        if(!en.isExploding){
-          ctx.drawImage(imgEnemy, 0, 0, 134, 199, en.x, en.y, 70, 100); 
-        } else {
-          // draw explosion
-          // ...
-          //alert('draw explosion');          
-          enemies.splice(enemies.indexOf(en),1);         
-        }       
-      });        
-
-      //console.log('after explosion: ' + enemies.length);
-
+      drawEnemy();
+      drawEnemyExplode();     
     }
 
     // draw userLaser
     // --------------
-    for(let i = 0; i < arrayLaser.length; i++){ 
-      // ctx.drawImage(userLaser, 40, 173, 15, 31, x, y,15,31); 
-      // middle laser
-      // ctx.drawImage(userLaser, 40, 173, 15, 31,arrayLaser[i].x, arrayLaser[i].y,15,31); 
-      // long laser
+    for(let i = 0; i < arrayLaser.length; i++){      
       ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].x, arrayLaser[i].y,42,72);     
       } 
             
-    // draw spaceship at current position
-    //ctx.drawImage(spaceship, x, y); 
+    // draw spaceship at current position    
     ctx.drawImage(spaceship, 0, 0, 170, 102, x, y, 130, 80);
        
 
@@ -316,6 +333,8 @@
   // --------------
   const spaceship = new Image();
   spaceship.src = "assets/img/hero.png";
+  spaceship.width = 75 * spaceship.width / 100;
+  
   let max_x;
   let x;
   let y;
@@ -355,6 +374,11 @@
     this.y = y;   
     this.speed = 200;  
     this.isExploding = false;  
+    this.spriteExplodeX = 0;
+    this.spriteExplodeTotFrame = 12;
+    this.spriteExplodeCountCurrentFrame = 1;
+    this.spriteExplodeSingleFrameWidth = 95;
+    this.spriteExplodeSpeedFrame = 0.08;    
     }
   }   
 
@@ -479,7 +503,7 @@
       // to keep same speed in all computer
       // all moving element defined variable speed will multiply the dt in the update code... 
       dt = (hrt - last) / 1000; 
-          
+                      
     //console.log(gameStatus);
 
       if (gameStatus == 'notYetStarted'){                           
