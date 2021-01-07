@@ -139,10 +139,12 @@
         // user laser collisions detection into enemies
         // --------------------------------------------           
            arrayLaser.forEach( l => {            
-            enemies.forEach( en =>{              
-              if((l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2)){
-                en.isExploding = true;
-                arrayLaser.splice(arrayLaser.indexOf(l),1);
+            enemies.forEach( en =>{    
+              if(!en.isExploding){
+                if((l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2)){
+                  en.isExploding = true;
+                  arrayLaser.splice(arrayLaser.indexOf(l),1);
+                }
               }
             });   
            });
@@ -192,23 +194,23 @@
           // draw to maintain img explode run    
           ctx.drawImage(explodeRunBtn, en.spriteExplodeX, 0, en.spriteExplodeSingleFrameWidth, 96, en.x, en.y, 100, 100);
                     
-          if (accudeltaTime > en.spriteExplodeSpeedFrame){     
+          if (en.accudeltaTime > en.spriteExplodeSpeedFrame){     
             ctx.drawImage(explodeRunBtn, en.spriteExplodeX, 0, en.spriteExplodeSingleFrameWidth, 96, en.x, en.y, 100, 100);           
     
             en.spriteExplodeCountCurrentFrame++;
             en.spriteExplodeX += en.spriteExplodeSingleFrameWidth;  
                         
-            accudeltaTime = 0;            
+            en.accudeltaTime = 0;            
 
             if (en.spriteExplodeCountCurrentFrame > 12){                 
               // end of width file image : no more frame to show from the sprite file.
-              accudeltaTime = 0;  
+              en.accudeltaTime = 0;  
               en.spriteExplodeX = 0;  
               enemies.splice(enemies.indexOf(en),1);            
             }
 
           } else {
-            accudeltaTime += dt;
+            en.accudeltaTime += dt;
           }
         }
       });   
@@ -377,7 +379,8 @@
     this.spriteExplodeTotFrame = 12;
     this.spriteExplodeCountCurrentFrame = 1;
     this.spriteExplodeSingleFrameWidth = 95;
-    this.spriteExplodeSpeedFrame = 0.08;    
+    this.spriteExplodeSpeedFrame = 0.1;    
+    this.accudeltaTime = 0;
     }
   }   
 
