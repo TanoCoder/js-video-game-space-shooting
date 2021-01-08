@@ -202,7 +202,7 @@
                         
             en.accudeltaTime = 0;            
 
-            if (en.spriteExplodeCountCurrentFrame > 12){                 
+            if (en.spriteExplodeCountCurrentFrame > en.spriteExplodeTotFrame){                 
               // end of width file image : no more frame to show from the sprite file.
               en.accudeltaTime = 0;  
               en.spriteExplodeX = 0;  
@@ -375,8 +375,8 @@
     this.y = y;   
     this.speed = 200;  
     this.isExploding = false;  
-    this.spriteExplodeX = 0;
-    this.spriteExplodeTotFrame = 12;
+    this.spriteExplodeX = 190;
+    this.spriteExplodeTotFrame = 10;
     this.spriteExplodeCountCurrentFrame = 1;
     this.spriteExplodeSingleFrameWidth = 95;
     this.spriteExplodeSpeedFrame = 0.1;    
