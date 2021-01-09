@@ -141,7 +141,7 @@
            arrayLaser.forEach( l => {            
             enemies.forEach( en =>{    
               if(!en.isExploding){
-                if((l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2)){
+                if( (l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2) && (l.y >= en.y) ){                  
                   en.isExploding = true;
                   arrayLaser.splice(arrayLaser.indexOf(l),1);
                 }
@@ -416,7 +416,8 @@
       spaceship.width = 75 * spaceship.width / 100;
       max_x = (canvas.width - spaceship.width);
       x = ((canvas.width - spaceship.width) / 2);
-      y = (canvas.height - spaceship.height - 10); 
+      y = (canvas.height - spaceship.height - 10);       
+      
       ctx.drawImage(spaceship, x, y);
 
       // init userLaser image
