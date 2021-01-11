@@ -27,63 +27,64 @@
       // Test Keyboard combination
       // -------------------------
       
-      // left and fire (spacebar)
-      if (keyLeft && keySpace){
-        // Hero x pos
-        x -= Math.floor(heroSpeed * dt);
-        if (x < 0){x = 0;}         
-        
-        // if no colldown hero fire, then trigger first pos of fire laser
-        if (!isHeroFireCoolDown()){          
-          let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 20), y - 35);
-          arrayLaser.push(newObjUserLaser); 
-          // for cooldown Hero Fire calculation  
-          lastHeroFireTime = performance.now();          
-        }
-
-      } else {
-        // right and fire (spacebar)
-        if (keyRight && keySpace){
-          // Hero x pos
-          x += Math.floor(heroSpeed * dt); 
-          if (x > max_x){x = max_x;} 
-
+      if(!heroIsExploding){
+        // left and fire (spacebar)
+        if (keyLeft && keySpace){
+          // Hero heroX pos
+          heroX -= Math.floor(heroSpeed * dt);
+          if (heroX < 0){heroX = 0;}         
+          
           // if no colldown hero fire, then trigger first pos of fire laser
-          if (!isHeroFireCoolDown()){
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 20), y - 35);
+          if (!isHeroFireCoolDown()){          
+            let newObjUserLaser = new objUserLaser((heroX + (spaceship.width / 2) - 20), heroY - 35);
             arrayLaser.push(newObjUserLaser); 
             // for cooldown Hero Fire calculation  
-            lastHeroFireTime = performance.now();  
+            lastHeroFireTime = performance.now();          
           }
 
         } else {
-          // left alone
-          if (keyLeft){
-            x -= Math.floor(heroSpeed * dt); 
-            if (x < 0){x = 0;} 
+          // right and fire (spacebar)
+          if (keyRight && keySpace){
+            // Hero heroX pos
+            heroX += Math.floor(heroSpeed * dt); 
+            if (heroX > max_x){heroX = max_x;} 
+
+            // if no colldown hero fire, then trigger first pos of fire laser
+            if (!isHeroFireCoolDown()){
+              let newObjUserLaser = new objUserLaser((heroX + (spaceship.width / 2) - 20), heroY - 35);
+              arrayLaser.push(newObjUserLaser); 
+              // for cooldown Hero Fire calculation  
+              lastHeroFireTime = performance.now();  
+            }
+
+          } else {
+            // left alone
+            if (keyLeft){
+              heroX -= Math.floor(heroSpeed * dt); 
+              if (heroX < 0){heroX = 0;} 
+            }
+              
+            // right alone
+            if (keyRight){
+              heroX += Math.floor(heroSpeed * dt); 
+              if (heroX > max_x){heroX = max_x;} 
+            } 
+              
+            // fire alone (only space bar without moving hero)
+            // if no colldown hero fire, then trigger first pos of fire laser
+            if(keySpace && !isHeroFireCoolDown()){ 
+              let newObjUserLaser = new objUserLaser((heroX + (spaceship.width / 2) - 20), heroY - 35);
+              arrayLaser.push(newObjUserLaser); 
+              // for cooldown Hero Fire calculation  
+              lastHeroFireTime = performance.now();  
+            }
           }
-            
-          // right alone
-          if (keyRight){
-            x += Math.floor(heroSpeed * dt); 
-            if (x > max_x){x = max_x;} 
-          } 
-            
-          // fire alone (only space bar without moving hero)
-          // if no colldown hero fire, then trigger first pos of fire laser
-          if(keySpace && !isHeroFireCoolDown()){ 
-            let newObjUserLaser = new objUserLaser((x + (spaceship.width / 2) - 20), y - 35);
-            arrayLaser.push(newObjUserLaser); 
-            // for cooldown Hero Fire calculation  
-            lastHeroFireTime = performance.now();  
-          }
-        }
-      } // end Test Keyboard combination
+        } // end Test Keyboard combination
+      }
                         
       // Calculate new hero fire laser position
       // -------------------------------------- 
-      for(let i = 0; i < arrayLaser.length; i++){ 
-        // ctx.drawImage(userLaser, 40, 173, 15, 31, x, y,15,31); 
+      for(let i = 0; i < arrayLaser.length; i++){         
         arrayLaser[i].y = arrayLaser[i].y - Math.floor(userLaserSpeed * dt);         
       } 
       
@@ -134,39 +135,50 @@
         });
       }
       
-      function collisionsDetection(){
-
-        // user laser collisions detection into enemies
-        // --------------------------------------------           
+      function collisionsDetection(){           
            arrayLaser.forEach( l => {            
-            enemies.forEach( en =>{    
+            enemies.forEach( en =>{  
               if(!en.isExploding){
+                // user laser collisions detection into enemies
+                // --------------------------------------------        
                 if( (l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2) && (l.y >= en.y) ){                  
                   en.isExploding = true;
                   arrayLaser.splice(arrayLaser.indexOf(l),1);
-                }
+                }                
               }
             });   
            });
 
-        // Hero spaceship collision detection into enemies 
-        // -----------------------------------------------
-
+           // Hero spaceship collision detection into enemies 
+          // -----------------------------------------------          
+            enemies.forEach( en =>{  
+              if(!en.isExploding){  
+                if (heroX <= en.x + 70 - 10 &&  heroX + 130 -10 >= en.x && heroY <= en.y + 100 - 10 && heroY + 80 - 10 >= en.y) {
+                  // collision détectée !
+                  heroIsExploding = true;  
+                  en.isExploding = true;             
+                }
+             }
+            });   
+                  
         // enemies laser collisions detection into Hero
         // --------------------------------------------
 
       }
 
-      heroKeyboardMoveAndFire(); 
+      
+      heroKeyboardMoveAndFire();      
+
       outOfScreenGarbageCollector();
 
       // if game is started
       if (gameStatus == 'start'){
-        // if arr less than 10 enemies then create new enemies
-        while (enemies.length < 10){          
-          objEnemy = new Enemy(getRandom(10, canvas.width - 70), getRandom(-1000, -120));          
-          enemies.push(objEnemy);                    
-        }       
+        // if arr less than 10 enemies then create new enemies        
+        while (enemies.length < 10){                  
+          objEnemy = new Enemy(getRandom(deletedEnemiesPosX[0] - 15, deletedEnemiesPosX[0] + 15), getRandom(-1000, -120));          
+          enemies.push(objEnemy);           
+          deletedEnemiesPosX.splice(0,1);
+        }                 
 
         enemiesMove();  
         collisionsDetection();      
@@ -183,6 +195,10 @@
       enemies.forEach( (en) => {
         if(!en.isExploding){
           ctx.drawImage(imgEnemy, 0, 0, 134, 199, en.x, en.y, 70, 100); 
+
+          //ctx.strokeStyle = 'yellow';  // some color/style
+          //ctx.lineWidth = 2;         // thickness
+          //ctx.strokeRect(en.x, en.y, 70, 100); 
         }
       });        
     }
@@ -206,7 +222,8 @@
               // end of width file image : no more frame to show from the sprite file.
               en.accudeltaTime = 0;  
               en.spriteExplodeX = 0;  
-              enemies.splice(enemies.indexOf(en),1);            
+              deletedEnemiesPosX.push(en.x);
+              enemies.splice(enemies.indexOf(en),1);                            
             }
 
           } else {
@@ -258,7 +275,38 @@
       } 
             
     // draw spaceship at current position    
-    ctx.drawImage(spaceship, 0, 0, 170, 102, x, y, 130, 80);
+    // ----------------------------------
+    if(!heroIsExploding){
+      ctx.drawImage(spaceship, 0, 0, 170, 102, heroX, heroY, 130, 80);
+      //ctx.strokeStyle = 'green';  // some color/style
+      //ctx.lineWidth = 2;         // thickness
+      //ctx.strokeRect(heroX, heroY, 130, 80);
+    } else {
+      // draw to maintain img explode run         
+      ctx.drawImage(explodeRunBtn, heroSpriteExplodeX, 0, spriteExplodeSingleFrameWidth, 96, heroX, heroY, 100, 100);
+                    
+      if (accudeltaTime > spriteExplodeSpeedFrame){     
+        ctx.drawImage(explodeRunBtn, heroSpriteExplodeX, 0, spriteExplodeSingleFrameWidth, 96, heroX, heroY, 100, 100);           
+
+        spriteExplodeCountCurrentFrame++;
+        heroSpriteExplodeX += spriteExplodeSingleFrameWidth;  
+                    
+        accudeltaTime = 0;            
+
+        if (spriteExplodeCountCurrentFrame > spriteExplodeTotFrame){                 
+          // end of width file image : no more frame to show from the sprite file.
+          accudeltaTime = 0;  
+          heroSpriteExplodeX = 0;  
+          spriteExplodeCountCurrentFrame = 0;
+          heroIsExploding = false;        
+          heroX = ((canvas.width - spaceship.width) / 2);
+          heroY = (canvas.height - spaceship.height - 10);    
+        }
+      } else {
+        accudeltaTime += dt;
+      }      
+    }
+    
        
 
   } // end draw
@@ -337,9 +385,17 @@
   spaceship.src = "assets/img/hero.png";  
   
   let max_x;
-  let x;
-  let y;
+  let heroX;
+  let heroY;
   let heroSpeed = 500;
+  let heroIsExploding = false;
+
+  let heroSpriteExplodeX = 0;
+  let spriteExplodeTotFrame = 12;
+  let spriteExplodeCountCurrentFrame = 1;
+  let spriteExplodeSingleFrameWidth = 95;
+  let spriteExplodeSpeedFrame = 0.1;  
+      
   // user laser beam
   // ---------------
   const userLaser = new Image();
@@ -377,7 +433,7 @@
     this.isExploding = false;  
     this.spriteExplodeX = 190;
     this.spriteExplodeTotFrame = 10;
-    this.spriteExplodeCountCurrentFrame = 1;
+    this.spriteExplodeCountCurrentFrame = 3;
     this.spriteExplodeSingleFrameWidth = 95;
     this.spriteExplodeSpeedFrame = 0.1;    
     this.accudeltaTime = 0;
@@ -387,6 +443,8 @@
   // vector
   let enemies = [];
   let objEnemy;
+  let deletedEnemiesPosX = [];
+  let indexDeletedEnemiesPosX = 0;
 
   // initial enemies and position to start the game
   let initialEnemyX = (80 / 2) + 10;  
@@ -415,10 +473,10 @@
     spaceship.onload = () => {   
       spaceship.width = 75 * spaceship.width / 100;
       max_x = (canvas.width - spaceship.width);
-      x = ((canvas.width - spaceship.width) / 2);
-      y = (canvas.height - spaceship.height - 10);       
+      heroX = ((canvas.width - spaceship.width) / 2);
+      heroY = (canvas.height - spaceship.height - 10);       
       
-      ctx.drawImage(spaceship, x, y);
+      ctx.drawImage(spaceship, heroX, heroY);
 
       // init userLaser image
       // -------------------- 
