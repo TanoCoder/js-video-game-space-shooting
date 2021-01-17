@@ -134,38 +134,44 @@
           }
         });
       }
+
+      function enemiesFire(){
+        enemies.forEach( (en) => {                                    
+
+        });
+      }
       
       function collisionsDetection(){           
-           arrayLaser.forEach( l => {            
-            enemies.forEach( en =>{  
-              if(!en.isExploding){
-                // user laser collisions detection into enemies
-                // --------------------------------------------        
-                if( (l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2) && (l.y >= en.y) ){                  
-                  en.isExploding = true;
-                  arrayLaser.splice(arrayLaser.indexOf(l),1);
-                }                
+                                         
+        enemies.forEach( en =>{  
+          if(!en.isExploding){  
+
+            arrayLaser.forEach( l => {            
+              // user laser collisions detection into enemies
+              // --------------------------------------------        
+              if( (l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2) && (l.y >= en.y) ){                  
+                en.isExploding = true;
+                arrayLaser.splice(arrayLaser.indexOf(l),1);
+              }                
+            });                  
+            
+            // enemies laser collisions detection into Hero
+            // --------------------------------------------
+
+
+
+            // Hero spaceship collision detection into enemies 
+            // -----------------------------------------------  
+            if(!heroIsExploding){
+              if (heroX <= en.x + 70 - 10 &&  heroX + 130 -10 >= en.x && heroY <= en.y + 100 - 10 && heroY + 80 - 10 >= en.y) {
+                // collision détectée !
+                heroIsExploding = true;  
+                en.isExploding = true;             
               }
-            });   
-           });
-
-           // Hero spaceship collision detection into enemies 
-          // -----------------------------------------------          
-            enemies.forEach( en =>{  
-              if(!en.isExploding){  
-                if (heroX <= en.x + 70 - 10 &&  heroX + 130 -10 >= en.x && heroY <= en.y + 100 - 10 && heroY + 80 - 10 >= en.y) {
-                  // collision détectée !
-                  heroIsExploding = true;  
-                  en.isExploding = true;             
-                }
-             }
-            });   
-                  
-        // enemies laser collisions detection into Hero
-        // --------------------------------------------
-
+            }
+          }
+        });         
       }
-
       
       heroKeyboardMoveAndFire();      
 
@@ -180,7 +186,8 @@
           deletedEnemiesPosX.splice(0,1);
         }                 
 
-        enemiesMove();  
+        enemiesMove(); 
+        //enemiesFire(); 
         collisionsDetection();      
       }
       
