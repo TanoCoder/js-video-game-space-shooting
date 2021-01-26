@@ -136,25 +136,46 @@
       }
 
       function enemiesFire(){
-        enemies.forEach( (en) => {                                    
+        enemies.forEach( (en , i) => {    
+          if((en.x >= heroX - 70) && (en.x <= heroX + 100) ){
+            if((en.accuDt > en.coolDownMs / 1000) && (en.y > 0) && (!en.isExploding)){
+              en.laser.push({x: en.x + (70 / 2) - 15 , y: en.y + 100 - 10});
+              en.accuDt = 0;
+            } else {
+              en.accuDt += dt;
+            }
+          }
 
+          // updat enemy lasers 
+          en.laser.forEach((l, i) => {               
+              l.y += en.laserSpeed * dt;               
+          });          
         });
-      }
+      } // end function enemiesFire()
       
       function collisionsDetection(){           
                                          
         enemies.forEach( en =>{  
           if(!en.isExploding){  
 
-            arrayLaser.forEach( l => {            
+            let indexLaserToDel = [];
+
+            arrayLaser.forEach( (cv, i) => {            
               // user laser collisions detection into enemies
               // --------------------------------------------        
-              if( (l.x >= en.x - 20) && (l.x <= en.x + 70 -10) && (l.y <= en.y + 100 / 2) && (l.y >= en.y) ){                  
+              if( (cv.x >= en.x - 20) && (cv.x <= en.x + 70 -10) && (cv.y <= en.y + 100 / 2) && (cv.y >= en.y) ){                  
                 en.isExploding = true;
-                arrayLaser.splice(arrayLaser.indexOf(l),1);
+                //console.log(`cv.x: ${cv.x} cv.y: ${cv.y} index: ${i}`);                
+                indexLaserToDel.push(i);                                
               }                
-            });                  
+            });   
+                                
+            indexLaserToDel.forEach((el, i) => {
+              arrayLaser.splice(i,1);              
+            });
+                         
             
+
             // enemies laser collisions detection into Hero
             // --------------------------------------------
 
@@ -163,7 +184,7 @@
             // Hero spaceship collision detection into enemies 
             // -----------------------------------------------  
             if(!heroIsExploding){
-              if (heroX <= en.x + 70 - 10 &&  heroX + 130 -10 >= en.x && heroY <= en.y + 100 - 10 && heroY + 80 - 10 >= en.y) {
+              if (heroX <= en.x + 70 &&  heroX + 130 -10 >= en.x && heroY <= en.y + 100 - 10 && heroY + 80 - 10 >= en.y) {
                 // collision détectée !
                 heroIsExploding = true;  
                 en.isExploding = true;             
@@ -187,7 +208,7 @@
         }                 
 
         enemiesMove(); 
-        //enemiesFire(); 
+        enemiesFire(); 
         collisionsDetection();      
       }
       
@@ -201,17 +222,12 @@
     function drawEnemy(){
       enemies.forEach( (en) => {
         if(!en.isExploding){
-          ctx.drawImage(imgEnemy, 0, 0, 134, 199, en.x, en.y, 70, 100); 
-
-          //ctx.strokeStyle = 'yellow';  // some color/style
-          //ctx.lineWidth = 2;         // thickness
-          //ctx.strokeRect(en.x, en.y, 70, 100); 
+          ctx.drawImage(imgEnemy, 0, 0, 134, 199, en.x, en.y, 70, 100);          
         }
       });        
     }
     
-    function drawEnemyExplode(){
-            
+    function drawEnemyExplode(){            
       enemies.forEach( (en) => {
         if(en.isExploding){          
           // draw to maintain img explode run    
@@ -239,6 +255,15 @@
         }
       });   
     }     
+
+    function drawEnemiesFire(){
+      enemies.forEach( (en) => {        
+        en.laser.forEach(l => {
+          //ctx.drawImage(imgEnemyLaser, 230, 215, 42, 72, l.x, l.y, 42,72);
+          ctx.drawImage(imgEnemyLaser, 210, 310, 60, 90, l.x, l.y, 42, 72);  
+        });        
+      });        
+    }
     
     // clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
@@ -272,13 +297,16 @@
     // ------------
     if (gameStatus == 'start'){
       drawEnemy();
-      drawEnemyExplode();     
+      drawEnemyExplode(); 
+      drawEnemiesFire();    
     }
 
     // draw userLaser
     // --------------
     for(let i = 0; i < arrayLaser.length; i++){      
-      ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].x, arrayLaser[i].y,42,72);     
+      //ctx.drawImage(userLaser, 230, 215, 42, 72,arrayLaser[i].x, arrayLaser[i].y,42,72);    // mauve
+      ctx.drawImage(userLaser, 300, 25, 60, 110,arrayLaser[i].x, arrayLaser[i].y,42,72);    // bleu
+
       } 
             
     // draw spaceship at current position    
@@ -444,8 +472,14 @@
     this.spriteExplodeSingleFrameWidth = 95;
     this.spriteExplodeSpeedFrame = 0.1;    
     this.accudeltaTime = 0;
+    // about laser fire management
+    this.laser = [{}];
+    this.laserSpeed = 600;
+    this.coolDownMs = 500;
+    this.accuDt = 0;    
     }
   }   
+ 
 
   // vector
   let enemies = [];
@@ -471,10 +505,15 @@
     objEnemy = new Enemy(initialEnemyX, initialEnemyY);
     enemies.push(objEnemy);
     initialEnemyX -= 130;    
-    initialEnemyY = initialEnemyY + 100;
+    initialEnemyY = initialEnemyY + 100;    
   }
 
   
+  // enemy laser image
+  const imgEnemyLaser = new Image();
+  imgEnemyLaser.src = "assets/img/beams.png"; 
+
+      
   // init spaceship image
   // --------------------        
     spaceship.onload = () => {   
