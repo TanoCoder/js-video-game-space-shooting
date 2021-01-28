@@ -325,7 +325,7 @@
         ctx.lineWidth = 4;         // thickness
         //ctx.strokeRect(heroX, heroY, 130, 80);
         ctx.beginPath();
-        ctx.arc(heroX + 60, heroY, 100, 0, 2 * Math.PI, false);
+        ctx.arc(heroX + 60, heroY, 110, 0, 2 * Math.PI, false);
                 
         ctx.stroke();
         
