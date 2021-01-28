@@ -138,7 +138,7 @@
       function enemiesFire(){
         enemies.forEach( (en , i) => {    
           if((en.x >= heroX - 70) && (en.x <= heroX + 100) ){
-            if((en.accuDt > en.coolDownMs / 1000) && (en.y > 0) && (!en.isExploding)){
+            if((en.accuDt > en.coolDownMs / 1000) && (en.y > 0) && (!en.isExploding) &&(!heroIsExploding) && (!heroIsProtected)){
               en.laser.push({x: en.x + (70 / 2) - 15 , y: en.y + 100 - 10});
               en.accuDt = 0;
             } else {
@@ -173,18 +173,24 @@
             indexLaserToDel.forEach((el, i) => {
               arrayLaser.splice(i,1);              
             });
-                         
-            
 
             // enemies laser collisions detection into Hero
             // --------------------------------------------
-
+            enemies.forEach( en =>{  
+              en.laser.forEach((l, i) => {               
+                if(!heroIsExploding){
+                  if( (l.x >= heroX - 20) && (l.x <= heroX + 130) && (l.y <= heroY + 80) && (l.y >= heroY) ){                                      
+                    heroIsExploding = true;                     
+                   }  
+                }
+              });          
+            });    
 
 
             // Hero spaceship collision detection into enemies 
             // -----------------------------------------------  
-            if(!heroIsExploding){
-              if (heroX <= en.x + 70 &&  heroX + 130 -10 >= en.x && heroY <= en.y + 100 - 10 && heroY + 80 - 10 >= en.y) {
+            if((!heroIsExploding) && (!heroIsProtected)){
+              if (heroX <= en.x + 70 &&  heroX + 130 >= en.x && heroY + 35 <= en.y + 100 && heroY + 80 >= en.y) {
                 // collision détectée !
                 heroIsExploding = true;  
                 en.isExploding = true;             
@@ -311,11 +317,37 @@
             
     // draw spaceship at current position    
     // ----------------------------------
-    if(!heroIsExploding){
+    if(!heroIsExploding){      
       ctx.drawImage(spaceship, 0, 0, 170, 102, heroX, heroY, 130, 80);
-      //ctx.strokeStyle = 'green';  // some color/style
-      //ctx.lineWidth = 2;         // thickness
-      //ctx.strokeRect(heroX, heroY, 130, 80);
+
+      if(heroIsProtected){
+        ctx.strokeStyle = 'yellow';  // some color/style
+        ctx.lineWidth = 4;         // thickness
+        //ctx.strokeRect(heroX, heroY, 130, 80);
+        ctx.beginPath();
+        ctx.arc(heroX + 60, heroY, 100, 0, 2 * Math.PI, false);
+                
+        ctx.stroke();
+        
+        if(fontSize > 31){
+          fontSize -= 2;         
+          ctx.textAlign = 'center';
+        } else {
+          fontSize = 30;
+        }  
+
+        ctx.font = `${fontSize}px Comic Sans MS`;
+        ctx.fillStyle = "yellow";        
+        
+        ctx.fillText(`GET READY !`, heroX + 60, heroY - 20); 
+
+      } else {
+        ctx.drawImage(spaceship, 0, 0, 170, 102, heroX, heroY, 130, 80);
+        heroProtectionAccuDt = 0;
+        heroProtectionTimeLeft = heroProtectionTime;
+        fontSize = 150;
+      }
+      
     } else {
       // draw to maintain img explode run         
       ctx.drawImage(explodeRunBtn, heroSpriteExplodeX, 0, spriteExplodeSingleFrameWidth, 96, heroX, heroY, 100, 100);
@@ -332,10 +364,19 @@
           // end of width file image : no more frame to show from the sprite file.
           accudeltaTime = 0;  
           heroSpriteExplodeX = 0;  
-          spriteExplodeCountCurrentFrame = 0;
-          heroIsExploding = false;        
+          spriteExplodeCountCurrentFrame = 0;          
           heroX = ((canvas.width - spaceship.width) / 2);
           heroY = (canvas.height - spaceship.height - 10);    
+          
+          heroIsExploding = false;
+
+          heroIsProtected = true;
+          heroProtectionTimeLeft = heroProtectionTime;
+          heroProtectionAccuDt = 0
+         
+          setTimeout(() => {
+             heroIsProtected = false;                    
+          },heroProtectionTime);
         }
       } else {
         accudeltaTime += dt;
@@ -424,6 +465,11 @@
   let heroY;
   let heroSpeed = 500;
   let heroIsExploding = false;
+  let heroIsProtected = false;
+  let heroProtectionTimeLeft;
+  let heroProtectionTime = 3000;
+  let heroProtectionAccuDt = 0;
+  let fontSize = 150;
 
   let heroSpriteExplodeX = 0;
   let spriteExplodeTotFrame = 12;
@@ -474,7 +520,7 @@
     this.accudeltaTime = 0;
     // about laser fire management
     this.laser = [{}];
-    this.laserSpeed = 600;
+    this.laserSpeed = 500;
     this.coolDownMs = 500;
     this.accuDt = 0;    
     }
