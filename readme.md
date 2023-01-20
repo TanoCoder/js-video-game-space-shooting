@@ -1,6 +1,6 @@
 # Javascript Canvas Video Game
 
-[Web GitHub Page: https://gaetano-di-salvo.github.io/js-video-game-space-shooting/](https://gaetano-di-salvo.github.io/js-video-game-space-shooting/)
+[Web GitHub Page: https://tanocoder.github.io/js-video-game-space-shooting/](https://tanocoder.github.io/js-video-game-space-shooting/)
 
 Space Shooting Game in javascript(canvas).
 
