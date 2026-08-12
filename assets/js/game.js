@@ -91,7 +91,7 @@ function drawStars() {
   stars.forEach(s => ctx.fillRect(s.x, s.y, 1, 1));
 }
 
-// --- ÉTAT DES ENTRÉES PARTAGÉ AVEC LE MOTEUR ---
+// --- ÉTAT DES ENTRÉES PHYSIQUES PARTAGÉES ---
 const inputs = {
   keyLeft: false,
   keyRight: false,
@@ -134,66 +134,82 @@ function initControls() {
     for (let i = 0; i < e.changedTouches.length; i++) {
       let touch = e.changedTouches[i];
       
-      // Zone haute générale pour la pause (15% de l'écran)
+      // Hitbox de la zone haute (15% de la hauteur de l'écran)
       let pauseZoneHeight = window.innerHeight * 0.15;
 
       if (touch.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused || gameState.status === 'notYetStarted')) {
         let screenCenter = window.innerWidth / 2;
-        // Hitbox latérale du son (240px de large au total)
+        // Hitbox du couloir central du son (240px de large au total)
         let isClickInAudioCenter = (touch.clientX > screenCenter - 120) && (touch.clientX < screenCenter + 120);
 
         if (isClickInAudioCenter) {
-          // NOUVEAUTÉ IPHONE : On ne fait plus rien au touchstart pour le son !
-          // On laisse le touchend s'en charger pour valider la sécurité iOS.
+          // ANCIEN BUG IPHONE CORRIGÉ : On ne touche pas au touchstart pour le son !
+          // On laisse l'écouteur de "click" universel (plus bas) s'en charger proprement.
           return;
         } else if (gameState.status === 'start' || gameState.isPaused) {
+          // Si on tape sur les côtés de la zone haute, c'est la pause
           gameState.isPaused = !gameState.isPaused;
+          return;
         }
-        return; 
       }
 
+      // --- COMMANDES DE PILOTAGE ET TIR ---
       if (gameState.status === 'start' || gameState.status === 'notYetStarted') {
         inputs.keySpace = true;
       }
 
+      // Division gauche / droite de l'écran pour les mouvements
       if (touch.clientX < window.innerWidth / 2) {
-        inputs.keyLeft = true; touchLeftId = touch.identifier; 
+        inputs.keyLeft = true; 
+        touchLeftId = touch.identifier; 
       } else {
-        inputs.keyRight = true; touchRightId = touch.identifier; 
+        inputs.keyRight = true; 
+        touchRightId = touch.identifier; 
       }
     }
   }, { passive: false });
 
   // ======================================================================
-  // C. INTERCEPTION DES RELÂCHEMENTS TACTILES (SMARTPHONE - SOLUTION IPHONE)
+  // C. INTERCEPTION DES RELÂCHEMENTS TACTILES (NETTOYAGE ANTI-RAFALE)
   // ======================================================================
   window.addEventListener("touchend", e => {
     for (let i = 0; i < e.changedTouches.length; i++) {
       let touch = e.changedTouches[i];
       
-      // --- CORRECTION HITBOX GÉANTE AUDIO POUR IPHONE 8 ---
-      // On crée un grand rectangle virtuel de 120px de haut au milieu pour le bouton de son
-      let screenCenter = window.innerWidth / 2;
-      let isTouchInAudioX = (touch.clientX > screenCenter - 120) && (touch.clientX < screenCenter + 120);
-      let isTouchInAudioY = (touch.clientY > 40) && (touch.clientY < 140); // 100 pixels de haut réactifs !
-
-      if (isTouchInAudioX && isTouchInAudioY && (gameState.status === 'start' || gameState.status === 'notYetStarted')) {
-        // Déclenchement au relâchement exigé par Safari iOS
-        gameState.isMuted = !gameState.isMuted;
-        initAudioContext(); // Force l'éveil des haut-parleurs de l'iPhone !
-        return;
-      }
-
-      // Nettoyage classique des pouces pour le pilotage
+      // Nettoyage immédiat et sécurisé des drapeaux physiques de mouvements
       if (touch.identifier === touchLeftId) { inputs.keyLeft = false; touchLeftId = null; }
       if (touch.identifier === touchRightId) { inputs.keyRight = false; touchRightId = null; }
     }
-    if (e.touches.length === 0) { inputs.keySpace = false; }
+    // S'il n'y a plus aucun pouce posé sur l'écran, on coupe TOUJOURS le tir d'office
+    if (e.touches.length === 0) { 
+      inputs.keySpace = false; 
+    }
   });
 
   window.addEventListener("touchcancel", () => {
     inputs.keyLeft = false; inputs.keyRight = false; inputs.keySpace = false;
     touchLeftId = null; touchRightId = null;
+  });
+
+  // ======================================================================
+  // D. SOLUTION ABSOLUE AUDIO IPHONE : L'ÉCOUTEUR DE CLIC NATIF
+  // ======================================================================
+  // Apple valide à 100% le déverrouillage audio si et seulement si la fonction
+  // est déclenchée par un "click" physique de souris ou de doigt émulé.
+  window.addEventListener("click", e => {
+    let screenCenter = window.innerWidth / 2;
+    let isClickInAudioX = (e.clientX > screenCenter - 120) && (e.clientX < screenCenter + 120);
+    // Zone verticale confortable entre Y=30px et Y=130px
+    let isClickInAudioY = (e.clientY > 30) && (e.clientY < 130);
+
+    if (isClickInAudioX && isClickInAudioY && (gameState.status === 'start' || gameState.status === 'notYetStarted')) {
+      gameState.isMuted = !gameState.isMuted; // Inverse le mode muet
+      
+      // Appel de la fonction présente dans sound.js pour ouvrir les vannes de l'iPhone !
+      if (typeof initAudioContext === "function") {
+        initAudioContext();
+      }
+    }
   });
 }
 
