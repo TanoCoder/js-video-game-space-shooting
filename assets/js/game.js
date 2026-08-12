@@ -495,14 +495,28 @@ function update() {
   gameState.arrayLaser.forEach(laser => laser.update());
   for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
 
+  // Gestion de la vague ennemie active
   if (gameState.status === 'start') {
+    // Maintien permanent de 10 cibles maximum à l'écran
     while (gameState.enemies.length < 10) {
+      // CORRECTION DU MILIEU VIDE :
+      // On pioche une ancienne colonne de mort, MAIS on lui applique un décalage aléatoire
+      // compris entre -80px et +80px. Cela force les ennemis à dériver et à occuper le milieu !
       let spawnX = gameState.deletedEnemiesPosX.length > 0 ? gameState.deletedEnemiesPosX.shift() : getRandom(50, canvas.width - 50);
-      gameState.enemies.push(new Enemy(getRandom(spawnX - 10, spawnX - 10), getRandom(-800, -100)));
+      
+      // On applique le décalage tout en bloquant les bords pour éviter qu'ils sortent de l'écran
+      spawnX = spawnX + getRandom(-80, 80);
+      if (spawnX < 35) spawnX = 35;
+      if (spawnX > canvas.width - 35) spawnX = canvas.width - 35;
+
+      // Injection de l'ennemi avec son altitude de départ cachée en haut
+      gameState.enemies.push(new Enemy(spawnX, getRandom(-800, -100)));
     }
+    
     gameState.enemies.forEach(en => en.update(hero.x, hero.isExploding, hero.isProtected));
     checkCollisions(hero, () => { hero.isExploding = true; gameState.playerHp--; }); 
   }
+  
 }
 
 function draw() {
