@@ -1,14 +1,18 @@
-/* Réinitialisation pour éviter les barres de défilement */
+/* ======================================================================
+   1. STYLE PAR DÉFAUT : SMARTPHONE (APPROCHE MOBILE-FIRST)
+   ====================================================================== */
+
+/* Réinitialisation complète des marges pour éviter les barres de défilement */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  background-color: black;
+  overflow: hidden; /* Bloque tout défilement parasite pendant les combats */
+  background-color: black; /* Fond noir absolu pour l'ambiance spatiale */
 }
 
-/* Votre Canvas de jeu qui prend tout l'écran */
+/* Configuration de la zone de dessin du jeu */
 canvas {
   position: absolute;
   top: 0;
@@ -17,43 +21,83 @@ canvas {
   height: 100%;
   background: black;
   display: block;
-  touch-action: none; /* Crucial pour bloquer le zoom tactile sur smartphone */
+  
+  /* CRUCIAL POUR SMARTPHONE : Désactive les zooms automatiques du navigateur 
+     lorsque le joueur tapote rapidement l'écran avec ses deux pouces */
+  touch-action: none; 
+
+  /* CORRECTION MOBILE : Augmente la luminosité de 20% et ravive les couleurs de 30%.
+     Cela compense le rendu trop sombre des dalles d'écrans de téléphones */
+  filter: brightness(1.2) saturate(1.3);
 }
 
-/* Le conteneur principal */
+/* Conteneur principal qui englobe le Canvas et le bouton HTML */
 #gameContainer {
   position: relative;
   width: 100%;
   height: 100%;
 }
 
-/* Votre bouton d'accueil RUN (Stylisé et centré) */
+/* Style du bouton d'accueil RUN adapté pour le pouce sur Mobile */
 .btn_run {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%); /* Centre parfaitement sur PC et Mobile */
-  width: 160px;
-  height: 60px;
+  /* Centre parfaitement le bouton au milieu horizontal et vertical de l'écran */
+  transform: translate(-50%, -50%); 
+  
+  width: 60%; /* Prend 60% de la largeur du téléphone pour être facile à viser */
+  max-width: 240px; /* Sécurité pour éviter qu'il devienne trop large sur tablette */
+  height: 70px; /* Hauteur généreuse pour un confort tactile optimal */
+  
   border: 2px solid black;
-  border-radius: 10px;
+  border-radius: 12px; /* Coins légèrement plus arrondis sur mobile */
   background-color: orange;
   color: black;
+  
+  /* Flexbox pour aligner et centrer parfaitement le texte "RUN" à l'intérieur */
   display: flex;
   justify-content: center;
   align-items: center;
+  
   font-family: 'Courier New', monospace;
   font-weight: bold;
-  z-index: 10; /* Force le bouton à être au-dessus du Canvas au départ */
+  z-index: 10; /* Force le bouton HTML à rester au-dessus du Canvas au départ */
 }
 
+/* Style du texte à l'intérieur du bouton d'accueil */
 #run {
-  font-size: 1.5rem;
+  font-size: 1.8rem; /* Écrit en gros pour une lecture immédiate sur smartphone */
   color: red;
 }
 
-.btn_run:hover {
-  cursor: pointer;
-  background-color: #ffb300;
+
+/* ======================================================================
+   2. EXCEPTION POUR LES GRANDS ÉCRANS (PC / BREAKPOINT >= 1024px)
+   ====================================================================== */
+@media (min-width: 1024px) {
+  
+  canvas {
+    /* Sur un moniteur PC, le rétroéclairage est déjà parfait. 
+       On désactive le filtre pour retrouver les couleurs d'origine des images. */
+    filter: brightness(1.0) saturate(1.0);
+  }
+
+  /* Ajustement du bouton RUN pour le pointeur précis de la souris */
+  .btn_run {
+    width: 160px; /* Taille fixe classique et élégante sur ordinateur */
+    height: 60px;
+    border-radius: 10px;
+  }
+
+  #run {
+    font-size: 1.5rem; /* Taille de police standard pour PC */
+  }
+
+  /* Effet visuel au survol : actif uniquement sur PC grâce à la souris */
+  .btn_run:hover {
+    cursor: pointer;
+    background-color: #ffb300; /* Orange légèrement plus foncé au survol */
+  }
 }
 

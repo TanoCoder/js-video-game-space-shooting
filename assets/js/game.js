@@ -283,34 +283,40 @@ function drawUI() {
   if (gameState.status !== 'start' && gameState.status !== 'gameOver' && gameState.status !== 'paused') return;
 
   ctx.save(); // Sécurise les réglages graphiques du Canvas
-  ctx.fillStyle = "#ffffff"; // Choix de la couleur blanche pour les textes
+  ctx.fillStyle = "#ffffff"; // Choix de la couleur blanche pour les textes de l'UI
   ctx.font = "bold 20px 'Courier New', monospace"; // Style de police rétro typé arcade
   
   // --- A. AFFICHAGE DU SCORE (HAUT À GAUCHE) ---
   ctx.textAlign = "left"; // Alignement du texte calé vers la gauche
-  // .padStart(6, '0') force l'affichage sur 6 chiffres (ex: 000100) pour le style arcade
   ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
   
-  // --- B. INDICATEUR DE PAUSE DÉPORTÉ (HAUT AU MILIEU) ---
+  // --- B. INDICATEUR DE PAUSE ADAPTATIF - LOGIQUE MOBILE-FIRST ---
   // On n'affiche l'indicateur d'aide que si le jeu est en cours et PAS déjà en pause
   if (!gameState.isPaused && gameState.status === 'start') {
-    ctx.save(); // Sauvegarde locale pour appliquer un style discret à ce texte
-    ctx.textAlign = "center"; // Alignement parfaitement centré au milieu horizontal de l'écran
-    // Blanc translucide (40% d'opacité) pour ne pas gêner la visibilité des combats spatiaux
-    ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
-    ctx.font = "14px 'Courier New', monospace"; // Taille de police légèrement plus petite pour le design
-    // Dessin du texte d'aide sur la même ligne verticale que le score et les PV (Y = 40)
-    ctx.fillText("Touch here to PAUSE", canvas.width / 2, 40); 
-    ctx.restore(); // Restaure le style blanc opaque pour la suite
+    ctx.save(); 
+    ctx.textAlign = "center"; 
+    ctx.font = "14px 'Courier New', monospace"; 
+
+    // Mobile-First par défaut : Opacité forte à 80% (0.8) pour que ce soit bien lisible sur smartphone
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; 
+    let pauseMessage = "Touch here to PAUSE";
+    
+    // Exception PC : Si l'écran est grand, on peut baisser l'opacité à 50% (0.5) pour le design
+    if (window.innerWidth >= 1024) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+      pauseMessage = "Press P to PAUSE";
+    }
+
+    ctx.fillText(pauseMessage, canvas.width / 2, 40); 
+    ctx.restore(); 
   }
 
   // --- C. AFFICHAGE DES POINTS DE VIE (HAUT À DROITE) ---
   ctx.textAlign = "right"; // Alignement du texte calé vers la droite de l'écran
-  // Génère la chaîne de cœurs : rouges pour les PV restants, noirs pour les perdus
   const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
-  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); // Dessin calé sur la même ligne (Y = 40)
+  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
   
-  ctx.restore(); // Restaure l'état d'origine du Canvas
+  ctx.restore(); 
 }
 
 // ======================================================================
@@ -320,7 +326,6 @@ function drawGameOver() {
   if (gameState.status !== 'gameOver') return;
 
   ctx.save();
-  // Fond noir opaque à 85% pour masquer l'action du jeu en arrière-plan
   ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
