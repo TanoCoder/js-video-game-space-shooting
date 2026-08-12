@@ -295,27 +295,25 @@ function drawUI() {
   const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
   ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
 
-  // --- C. INDICATEUR DE PAUSE ADAPTATIF (HAUT AU MILIEU - NOUVELLE LIGNE 2) ---
+  // --- C. INDICATEUR DE PAUSE ADAPTATIF ET RESPONSIVE ---
   // On n'affiche l'indicateur d'aide que si le jeu est en cours et PAS déjà en pause
   if (!gameState.isPaused && gameState.status === 'start') {
     ctx.save(); // Sauvegarde locale pour modifier la police et la couleur
     ctx.textAlign = "center"; // Alignement parfaitement centré au milieu de l'écran
-    
-    // CORRECTION LUMINOSITÉ : Passage à 90% d'opacité (0.9) pour être bien clair sur tous les écrans
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
-    ctx.font = "14px 'Courier New', monospace"; // Police plus petite pour ne pas encombrer le jeu
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; // Lumineux à 90% d'opacité
+    ctx.font = "14px 'Courier New', monospace"; // Police plus petite pour le design
 
-    // Approche Mobile-First par défaut pour le message
-    let pauseMessage = "Touch here to PAUSE";
-    
-    // Exception Bureau : Si l'écran dépasse 1024px de large, on affiche la touche PC
+    // LOGIQUE MOBILE-FIRST (DESSIN ET POSITIONNEMENT) :
     if (window.innerWidth >= 1024) {
-      pauseMessage = "Press P to PAUSE";
+      // EXCEPTION PC : Écran large. On affiche "Press P to PAUSE" 
+      // et on le positionne sur la LIGNE 1 (Y = 40) car il y a de la place !
+      ctx.fillText("Press P to PAUSE", canvas.width / 2, 40);
+    } else {
+      // PAR DÉFAUT MOBILE/TABLETTE : Écran étroit. On affiche "Touch here to PAUSE"
+      // et on le descend sur la LIGNE 2 (Y = 70) pour éviter que tout se chevauche.
+      ctx.fillText("Touch here to PAUSE", canvas.width / 2, 70);
     }
-
-    // CORRECTION EMPLACEMENT : On descend le texte à Y = 70 (juste en dessous de la ligne du Score/HP)
-    // Cela évite que les textes se chevauchent sur les petits écrans de smartphones
-    ctx.fillText(pauseMessage, canvas.width / 2, 70); 
+    
     ctx.restore(); // Restaure l'état pour la suite du Canvas
   }
   
