@@ -63,13 +63,14 @@ function drawStars() {
   stars.forEach(s => ctx.fillRect(s.x, s.y, 1, 1));
 }
 
-// État des variables d'entrées physiques partagé avec l'ensemble du moteur
+// --- ÉTAT DES ENTRÉES PHYSIQUES PARTAGÉ AVEC L'ENSEMBLE DU JEU ---
 const inputs = {
   keyLeft: false,
   keyRight: false,
   keySpace: false
 };
 
+// Mémorisation des identifiants des doigts pour le multi-touch mobile
 let touchLeftId = null;
 let touchRightId = null;
 
@@ -78,16 +79,15 @@ function initControls() {
   // A. INTERCEPTION DES COMMANDES CLAVIER (PC)
   // ======================================================================
   window.addEventListener("keydown", e => {
-    // --- DETECTION DE LA TOUCHE PAUSE ---
     // Si le joueur enfonce la touche P (minuscule ou majuscule)
-    // et que le jeu a commencé (ou est déjà en pause), on inverse l'état actuel
+    // et que le jeu a commencé (ou est déjà en pause), on inverse le booléen
     if (e.key === "p" || e.key === "P") {
       if (gameState.status === 'start' || gameState.isPaused) {
         gameState.isPaused = !gameState.isPaused; // Vrai devient Faux, Faux devient Vrai
       }
     }
     
-    // Commandes standards de mouvements et de tirs
+    // Commandes classiques de déplacements et de tirs sur PC
     if (e.key == " ") inputs.keySpace = true;
     if (e.key == "ArrowRight") inputs.keyRight = true; 
     if (e.key == "ArrowLeft") inputs.keyLeft = true;
@@ -103,45 +103,56 @@ function initControls() {
   // B. INTERCEPTION DES COMMANDES TACTILES (SMARTPHONE)
   // ======================================================================
   window.addEventListener("touchstart", e => {
+    // Évite le zoom ou les comportements natifs parasites du navigateur mobile sur le Canvas
     if (e.target.id === "canvas") { e.preventDefault(); }
 
-    // Analyse dynamique de tous les points de contact sur l'écran tactile
+    // Analyse de chaque point de contact tactile posé sur l'écran
     for (let i = 0; i < e.changedTouches.length; i++) {
       let touch = e.changedTouches[i];
       
-      // --- ZONE TACTILE PAUSE (HAUT DE L'ÉCRAN MOBILE) ---
-      // Si la coordonnée verticale (Y) du doigt est inférieure à 60 pixels
-      // (c'est-à-dire une pression dans la bande tout en haut de l'écran du téléphone)
-      if (touch.clientY < 60 && (gameState.status === 'start' || gameState.isPaused)) {
-        gameState.isPaused = !gameState.isPaused; // On inverse l'état de la pause
-        return; // Interrompt le script pour éviter de déplacer le vaisseau par erreur avec cette pression
+      // --- ERGONOMIE MOBILE : ZONE TACTILE DE PAUSE ÉLARGIE ---
+      // On calcule dynamiquement 15% de la hauteur totale de l'écran actuel.
+      // Cela offre un couloir réactif large d'environ 120px à 150px, idéal pour le pouce.
+      let pauseZoneHeight = window.innerHeight * 0.15;
+
+      // Si le doigt touche cette zone supérieure et que la partie est active/suspendue
+      if (touch.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused)) {
+        gameState.isPaused = !gameState.isPaused; // Enclenche ou retire le gel du jeu
+        return; // Interrompt la fonction immédiatement pour éviter d'appliquer un déplacement au joueur
       }
 
-      // Si le jeu est actif ou à l'accueil (pour le bouton RUN), on arme le tir continu automatique
+      // Si le jeu est en cours ou à l'accueil, toucher l'écran arme le tir automatique continu
       if (gameState.status === 'start' || gameState.status === 'notYetStarted') {
         inputs.keySpace = true;
       }
 
-      // Détection des déplacements par scission de l'écran en deux zones (Moitié gauche / Moitié droite)
+      // Gestion des déplacements : scission de la largeur de l'écran en deux zones égales
       if (touch.clientX < window.innerWidth / 2) {
-        inputs.keyLeft = true; touchLeftId = touch.identifier; 
+        inputs.keyLeft = true; 
+        touchLeftId = touch.identifier; // Mémorise le doigt qui gère la marche à gauche
       } else {
-        inputs.keyRight = true; touchRightId = touch.identifier; 
+        inputs.keyRight = true; 
+        touchRightId = touch.identifier; // Mémorise le doigt qui gère la marche à droite
       }
     }
   }, { passive: false });
 
-  // Arrêt physique des commandes dès que le joueur lève les doigts de l'écran tactile
+  // Arrêt physique des mouvements dès que le joueur retire ses doigts de l'écran tactile
   window.addEventListener("touchend", e => {
     for (let i = 0; i < e.changedTouches.length; i++) {
       let touch = e.changedTouches[i];
+      
+      // Si le doigt qui quitte l'écran est celui de gauche, on arrête d'aller à gauche
       if (touch.identifier === touchLeftId) { inputs.keyLeft = false; touchLeftId = null; }
+      // Si le doigt qui quitte l'écran est celui de droite, on arrête d'aller à droite
       if (touch.identifier === touchRightId) { inputs.keyRight = false; touchRightId = null; }
     }
-    // S'il n'y a plus aucun doigt posé sur la dalle tactile, on coupe le tir continu
+    
+    // Sécurité : s'il n'y a plus aucun doigt posé sur l'écran, on coupe proprement le tir automatique
     if (e.touches.length === 0) { inputs.keySpace = false; }
   });
 
+  // Sécurité système : réinitialise tout si le tactile est coupé par une alerte (ex: SMS, appel entrant)
   window.addEventListener("touchcancel", () => {
     inputs.keyLeft = false; inputs.keyRight = false; inputs.keySpace = false;
     touchLeftId = null; touchRightId = null;
@@ -265,7 +276,7 @@ function checkCollisions(hero, onHeroHit) {
 }
 
 // ======================================================================
-// 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE ET VIE)
+// 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE, PAUSE ET VIE)
 // ======================================================================
 function drawUI() {
   // On n'affiche l'interface que si la partie est active, en pause ou en Game Over
@@ -275,16 +286,29 @@ function drawUI() {
   ctx.fillStyle = "#ffffff"; // Choix de la couleur blanche pour les textes
   ctx.font = "bold 20px 'Courier New', monospace"; // Style de police rétro typé arcade
   
-  // --- AFFICHAGE DU SCORE ---
+  // --- A. AFFICHAGE DU SCORE (HAUT À GAUCHE) ---
   ctx.textAlign = "left"; // Alignement du texte calé vers la gauche
   // .padStart(6, '0') force l'affichage sur 6 chiffres (ex: 000100) pour le style arcade
   ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
   
-  // --- AFFICHAGE DES POINTS DE VIE (PV) ---
+  // --- B. INDICATEUR DE PAUSE DÉPORTÉ (HAUT AU MILIEU) ---
+  // On n'affiche l'indicateur d'aide que si le jeu est en cours et PAS déjà en pause
+  if (!gameState.isPaused && gameState.status === 'start') {
+    ctx.save(); // Sauvegarde locale pour appliquer un style discret à ce texte
+    ctx.textAlign = "center"; // Alignement parfaitement centré au milieu horizontal de l'écran
+    // Blanc translucide (40% d'opacité) pour ne pas gêner la visibilité des combats spatiaux
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
+    ctx.font = "14px 'Courier New', monospace"; // Taille de police légèrement plus petite pour le design
+    // Dessin du texte d'aide sur la même ligne verticale que le score et les PV (Y = 40)
+    ctx.fillText("Touch here to PAUSE", canvas.width / 2, 40); 
+    ctx.restore(); // Restaure le style blanc opaque pour la suite
+  }
+
+  // --- C. AFFICHAGE DES POINTS DE VIE (HAUT À DROITE) ---
   ctx.textAlign = "right"; // Alignement du texte calé vers la droite de l'écran
-  // Génère une chaîne de cœurs : rouges pour les PV restants, noirs pour les PV perdus
+  // Génère la chaîne de cœurs : rouges pour les PV restants, noirs pour les perdus
   const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
-  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); // Dessin en haut à droite
+  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); // Dessin calé sur la même ligne (Y = 40)
   
   ctx.restore(); // Restaure l'état d'origine du Canvas
 }
@@ -293,56 +317,46 @@ function drawUI() {
 // 2. RENDU DE L'ÉCRAN DE FIN DE PARTIE (GAME OVER)
 // ======================================================================
 function drawGameOver() {
-  // Si le jeu n'est pas dans le statut de défaite, on n'affiche rien
   if (gameState.status !== 'gameOver') return;
 
   ctx.save();
-  // Dessin d'un filtre de fond noir opaque à 85% pour masquer subtilement l'action du jeu
+  // Fond noir opaque à 85% pour masquer l'action du jeu en arrière-plan
   ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Rendu du grand texte rouge principal "GAME OVER" centré au milieu de l'écran
   ctx.fillStyle = "#ff3333";
   ctx.font = "bold 50px 'Courier New', monospace";
   ctx.textAlign = "center";
   ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 30);
   
-  // Rendu du sous-texte blanc indiquant les touches pour rejouer
   ctx.fillStyle = "#ffffff";
   ctx.font = "18px 'Courier New', monospace";
   ctx.fillText("Touchez l'écran ou ESPACE pour RESTART", canvas.width / 2, canvas.height / 2 + 30);
   
-  // Rappel visuel du score final totalisé par le joueur
   ctx.fillStyle = "#aaaaaa";
   ctx.font = "22px 'Courier New', monospace";
   ctx.fillText(`Score Final: ${gameState.score}`, canvas.width / 2, canvas.height / 2 + 80);
-  
   ctx.restore();
 }
 
 // ======================================================================
-// 3. RENDU DE L'ÉCRAN DE PAUSE (NOUVEAUTÉ)
+// 3. RENDU DE L'ÉCRAN DE PAUSE
 // ======================================================================
 function drawPauseScreen() {
-  // On ne dessine l'écran de pause que si le drapeau booléen de pause est activé
   if (!gameState.isPaused) return;
 
   ctx.save();
-  // Application d'un voile noir translucide à 50% pour donner un effet de gel visuel
   ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Dessin du texte "PAUSE" en orange vif, parfaitement visible par-dessus le voile
   ctx.fillStyle = "orange";
   ctx.font = "bold 50px 'Courier New', monospace";
   ctx.textAlign = "center";
   ctx.fillText("PAUSE", canvas.width / 2, canvas.height / 2);
   
-  // Dessin des consignes textuelles d'annulation pour reprendre la partie
   ctx.fillStyle = "#ffffff";
   ctx.font = "16px 'Courier New', monospace";
   ctx.fillText("Appuyez sur P ou touchez le haut de l'écran pour reprendre", canvas.width / 2, canvas.height / 2 + 40);
-  
   ctx.restore();
 }
 
