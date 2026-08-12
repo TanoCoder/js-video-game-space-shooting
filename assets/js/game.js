@@ -84,7 +84,7 @@ let touchLeftId = null;
 let touchRightId = null;
 
 // ======================================================================
-// FONCTION DE MISE À JOUR VISUELLE DU BOUTON HTML DE SON
+// FONCTION DE MISE À JOUR VISUELLE DU BOUTON HTML DE SON (EPURÉE MOBILE)
 // ======================================================================
 function updateSoundButtonUI() {
   const soundDiv = document.getElementById("div_sound");
@@ -94,20 +94,24 @@ function updateSoundButtonUI() {
   let isTactile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
   if (gameState.isMuted) {
-    soundDiv.style.color = "#ff3333"; // Rouge si le son est désactivé
+    soundDiv.style.color = "#ff3333"; // Rouge si désactivé
     if (window.innerWidth >= 1024) {
-      // AJUSTEMENT TEXTE PC : Ajout de la mention de la souris "or Click Mouse"
+      // VERSION PC : Texte explicatif complet clavier + souris
       soundText.innerText = isTactile ? "🔇 Press M, Touch or Click to turn SOUND ON" : "🔇 Press M or Click Mouse to turn SOUND ON";
     } else {
-      soundText.innerText = "🔇 Touch to turn SOUND ON";
+      // VERSION MOBILE : Uniquement l'icône explicite épurée (Zéro texte !)
+      soundText.innerText = "🔇";
+      soundText.style.fontSize = "24px"; // On grossit l'émoji pour qu'il soit bien visible au pouce
     }
   } else {
-    soundDiv.style.color = "#33ff33"; // Vert brillant si le son est activé
+    soundDiv.style.color = "orange"; // Orange harmonisé si activé
     if (window.innerWidth >= 1024) {
-      // AJUSTEMENT TEXTE PC : Ajout de la mention de la souris "or Click Mouse"
+      // VERSION PC : Texte complet
       soundText.innerText = isTactile ? "🔊 Press M, Touch or Click to MUTE" : "🔊 Press M or Click Mouse to MUTE";
     } else {
-      soundText.innerText = "🔊 Touch to MUTE";
+      // VERSION MOBILE : Uniquement l'icône explicite épurée (Zéro texte !)
+      soundText.innerText = "🔊";
+      soundText.style.fontSize = "24px";
     }
   }
 }
@@ -531,22 +535,31 @@ function checkCollisions(hero, onHeroHit) {
 function drawUI() {
   const soundDiv = document.getElementById("div_sound");
   
-  // GESTION DYNAMIQUE DU POSITIONNEMENT DU BOUTON DE SON HTML
+  // GESTION SIMPLE ET CENTRÉE DU BOUTON DE SON HTML (UNIFIÉE PC/MOBILE)
   if (soundDiv) {
     if (gameState.status === 'gameOver' || gameState.isPaused) {
       soundDiv.style.display = 'none'; // Cache le bouton pendant la pause ou le Game Over
     } else {
       soundDiv.style.display = 'flex'; // Visible à l'accueil et en jeu
       
-      // --- LOGIQUE DE CENTRAGE RESPONSIVE CORRIGÉE ---
-      if (window.innerWidth >= 1024 && gameState.status === 'start') {
-        // En pleine partie sur PC : On décale le bouton à droite pour laisser le milieu libre
-        soundDiv.style.left = "calc(50% + 180px)";
-        soundDiv.style.transform = "none";
+      // ALIGNEMENT UNIFIÉ : Toujours centré à 50% au milieu de l'écran horizontalement !
+      soundDiv.style.left = "50%";
+      soundDiv.style.transform = "translateX(-50%)";
+      soundDiv.style.justifyContent = "center"; // Aligne le texte pile au milieu de sa boîte HTML
+      
+      // CONFIGURATION RESPONSIVE : ADAPTATION PC (1 SEULE LIGNE DES LE DEBUT)
+      if (window.innerWidth >= 1024) {
+        // --- SUR PC ---
+        soundDiv.style.width = "600px"; 
+        if (gameState.status === 'start') {
+          soundDiv.style.top = "70px"; // En jeu sur PC, sous la pause
+        } else {
+          soundDiv.style.top = "95px"; // À l'accueil sur PC
+        }
       } else {
-        // À l'accueil (PC/Mobile) OU sur Smartphone en jeu : Centrage absolu parfait !
-        soundDiv.style.left = "50%";
-        soundDiv.style.transform = "translateX(-50%)";
+        // --- SUR MOBILE / TABLETTE ---
+        soundDiv.style.top = "95px";
+        soundDiv.style.width = "50px"; // Petit bouton circulaire compact
       }
     }
   }
@@ -567,19 +580,24 @@ function drawUI() {
   const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
   ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
 
-  // --- C. INDICATEUR DE PAUSE CENTRALE (SANS CONFLIT AUDIO) ---
+  // --- C. INDICATEUR DE PAUSE CENTRALE ADAPTATIF PC/MOBILE ---
   if (!gameState.isPaused && gameState.status === 'start') {
     ctx.save(); 
     ctx.textAlign = "center"; 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
-    ctx.font = "14px 'Courier New', monospace"; 
-
+    
     if (window.innerWidth >= 1024) {
-      // Sur PC, l'aide à la pause s'affiche pile au milieu
-      ctx.fillText("Press P to PAUSE", canvas.width / 2, 40);
+      // --- VISUEL PC ---
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
+      ctx.font = "14px 'Courier New', monospace"; 
+      ctx.fillText("Press P to PAUSE", canvas.width / 2, 40); // Ligne 1 au milieu
     } else {
-      // Sur mobile, l'aide à la pause reste centrée sur la ligne 2 (Y=70)
-      ctx.fillText("Touch here to PAUSE", canvas.width / 2, 70);
+      // --- VISUEL MOBILE ÉPURÉ (AMÉLIORATION UX) ---
+      // Forçage de la couleur blanche avec transparence (0.6) pour un style aérien chic
+      ctx.fillStyle = "rgba(255, 255, 255, 0.6)"; 
+      // Texte en MAJUSCULES et en GRAS (bold)
+      ctx.font = "bold 16px 'Courier New', monospace"; 
+      // Positionné discrètement sur la ligne 2 (Y=70), juste au-dessus du bouton de son
+      ctx.fillText("PAUSE", canvas.width / 2, 70); 
     }
     ctx.restore(); 
   }
@@ -613,7 +631,7 @@ function drawGameOver() {
 }
 
 // ======================================================================
-// 3. RENDU DE L'ÉCRAN DE PAUSE
+// 3. RENDU DE L'ÉCRAN DE PAUSE GRAPHIQUE
 // ======================================================================
 function drawPauseScreen() {
   if (!gameState.isPaused) return;
