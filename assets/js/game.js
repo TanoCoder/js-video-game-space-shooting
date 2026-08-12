@@ -84,7 +84,7 @@ let touchLeftId = null;
 let touchRightId = null;
 
 // ======================================================================
-// FONCTION DE MISE À JOUR VISUELLE DU BOUTON HTML DE SON (ICÔNE GROSSIE)
+// FONCTION DE MISE À JOUR VISUELLE DU BOUTON HTML DE SON
 // ======================================================================
 function updateSoundButtonUI() {
   const soundDiv = document.getElementById("div_sound");
@@ -100,7 +100,6 @@ function updateSoundButtonUI() {
       soundText.style.fontSize = "15px"; 
     } else {
       soundText.innerText = "🔇";
-      // CORRECTION TAILLE ÉMOJI MOBILE : Élargi à 32px dans le bouton rond
       soundText.style.fontSize = "32px"; 
     }
   } else {
@@ -110,7 +109,6 @@ function updateSoundButtonUI() {
       soundText.style.fontSize = "15px";
     } else {
       soundText.innerText = "🔊";
-      // CORRECTION TAILLE ÉMOJI MOBILE : Élargi à 32px dans le bouton rond
       soundText.style.fontSize = "32px";
     }
   }
@@ -156,17 +154,40 @@ function initControls() {
   });
 
   // ======================================================================
-  // B. INTERCEPTION DES COMMANDES DE PILOTAGE TACTILES (SMARTPHONE)
+  // B. INTERCEPTION DES CLICS ET TACTILES POINTERDOWN (PC / MOBILE)
   // ======================================================================
   window.addEventListener("pointerdown", e => {
     if (e.target.id === "div_sound" || e.target.id === "sound_text") return;
 
-    let pauseZoneHeight = window.innerHeight * 0.15;
-    if (e.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused)) {
-      gameState.isPaused = !gameState.isPaused;
-      return;
+    let screenCenter = window.innerWidth / 2;
+    let screenMiddleY = window.innerHeight / 2;
+
+    // --- PAUSE EN COMBAT ---
+    if (!gameState.isPaused && gameState.status === 'start') {
+      let isTouchInPauseX = (e.clientX > screenCenter - 100) && (e.clientX < screenCenter + 100);
+      let isTouchInPauseY = (e.clientY > 30) && (e.clientY < 90); 
+
+      if (isTouchInPauseX && isTouchInPauseY) {
+        gameState.isPaused = true;
+        canvas.style.cursor = "default"; // Réinitialise le curseur
+        return;
+      }
     }
 
+    // --- REPRISE DE LA PAUSE AU CENTRE ---
+    else if (gameState.isPaused) {
+      let isTouchInCenterX = (e.clientX > screenCenter - 150) && (e.clientX < screenCenter + 150);
+      let isTouchInCenterY = (e.clientY > screenMiddleY - 80) && (e.clientY < screenMiddleY + 80);
+
+      if (isTouchInCenterX && isTouchInCenterY) {
+        gameState.isPaused = false; 
+        canvas.style.cursor = "default"; // Réinitialise le curseur après clic
+        return;
+      }
+      return; 
+    }
+
+    // Pilotage
     if (gameState.status === 'start' || gameState.status === 'notYetStarted') {
       inputs.keySpace = true; 
     }
@@ -189,10 +210,46 @@ function initControls() {
     if (e.pointerId === touchRightId) { inputs.keyRight = false; touchRightId = null; }
     inputs.keySpace = false;
   });
+
+  // ======================================================================
+  // C. NOUVEAUTÉ PC : DETECTION DU SURVOL SOURIS DE LA PAUSE (EFFET CURSEUR)
+  // ======================================================================
+  window.addEventListener("pointermove", e => {
+    // On ne gère le curseur que sur PC (les écrans tactiles n'ont pas de survol souris)
+    if (window.innerWidth < 1024) return;
+
+    let screenCenter = window.innerWidth / 2;
+    let screenMiddleY = window.innerHeight / 2;
+
+    // 1. Si le jeu est figé en PAUSE, on cherche le survol du gros mot au centre
+    if (gameState.isPaused) {
+      let isHoverInCenterX = (e.clientX > screenCenter - 150) && (e.clientX < screenCenter + 150);
+      let isHoverInCenterY = (e.clientY > screenMiddleY - 80) && (e.clientY < screenMiddleY + 80);
+
+      if (isHoverInCenterX && isHoverInCenterY) {
+        canvas.style.cursor = "pointer"; // Transforme la souris en petite main !
+      } else {
+        canvas.style.cursor = "default"; // Remet la flèche normale
+      }
+    }
+    // 2. Si le jeu tourne, on cherche le survol du petit texte de pause tout en haut
+    else if (!gameState.isPaused && gameState.status === 'start') {
+      let isHoverInPauseX = (e.clientX > screenCenter - 100) && (e.clientX < screenCenter + 100);
+      let isHoverInPauseY = (e.clientY > 30) && (e.clientY < 90);
+
+      if (isHoverInPauseX && isHoverInPauseY) {
+        canvas.style.cursor = "pointer"; // Transforme en main
+      } else {
+        canvas.style.cursor = "default"; 
+      }
+    } else {
+      canvas.style.cursor = "default";
+    }
+  });
 }
 
 // ======================================================================
-// MODULE AUDIO RETRO (SYNTHÉTISEUR AVEC MIXAGE AUTOMATIQUE PC/MOBILE)
+// MODULE AUDIO RETRO (SYNTHÉTISEUR ET MIXAGE SECURISE MOBILE ATTÉNUÉ)
 // ======================================================================
 
 let audioCtx = null;
@@ -222,10 +279,10 @@ function initAudioContext() {
   }, { once: true });
 });
 
-// --- LOGIQUE MULTI-PLATEFORME : Calcule le volume selon l'écran ---
-// Si l'écran est petit (Mobile), on applique un diviseur de volume de 3 pour protéger vos oreilles !
+// --- LOGIQUE MULTI-PLATEFORME ATTENUÉE ---
+// CORRECTION VOLUME : Le coefficient mobile passe à 0.15 (15%) pour calmer enfin l'iPhone 8 !
 function getVolumeScale() {
-  return (window.innerWidth < 1024) ? 0.33 : 1.0;
+  return (window.innerWidth < 1024) ? 0.15 : 1.0;
 }
 
 // --- 1. BRUITAGE : TIR DE LASER JOUEUR ---
@@ -241,7 +298,6 @@ function playLaserSound() {
   osc.frequency.setValueAtTime(1100, now); 
   osc.frequency.exponentialRampToValueAtTime(200, now + 0.12); 
 
-  // Mixage de base multiplié par l'échelle PC ou Mobile
   let finalVolume = 0.04 * getVolumeScale();
   gainNode.gain.setValueAtTime(finalVolume, now); 
   gainNode.gain.linearRampToValueAtTime(0, now + 0.12); 
@@ -272,7 +328,7 @@ function playExplosionSound() {
   noiseFilter.frequency.exponentialRampToValueAtTime(50, now + duration);
   
   const noiseGain = audioCtx.createGain();
-  let finalNoiseVol = 0.45 * getVolumeScale(); // Atténué sur mobile
+  let finalNoiseVol = 0.45 * getVolumeScale(); 
   noiseGain.gain.setValueAtTime(finalNoiseVol, now);
   noiseGain.gain.linearRampToValueAtTime(0, now + duration);
   
@@ -285,7 +341,7 @@ function playExplosionSound() {
   bassOsc.frequency.setValueAtTime(100, now); 
   bassOsc.frequency.linearRampToValueAtTime(15, now + duration); 
 
-  let finalBassVol = 0.65 * getVolumeScale(); // Atténué sur mobile
+  let finalBassVol = 0.65 * getVolumeScale(); 
   bassGain.gain.setValueAtTime(finalBassVol, now); 
   bassGain.gain.linearRampToValueAtTime(0, now + duration);
   
@@ -540,53 +596,64 @@ function checkCollisions(hero, onHeroHit) {
 function drawUI() {
   const soundDiv = document.getElementById("div_sound");
   
+  // GESTION SIMPLE ET CENTRÉE DU BOUTON DE SON HTML (UNIFIÉE PC/MOBILE)
   if (soundDiv) {
     if (gameState.status === 'gameOver' || gameState.isPaused) {
-      soundDiv.style.display = 'none'; 
+      soundDiv.style.display = 'none'; // Cache le bouton pendant la pause ou le Game Over
     } else {
-      soundDiv.style.display = 'flex'; 
+      soundDiv.style.display = 'flex'; // Visible à l'accueil et en jeu
       
+      // ALIGNEMENT UNIFIÉ : Toujours centré à 50% au milieu de l'écran horizontalement !
       soundDiv.style.left = "50%";
       soundDiv.style.transform = "translateX(-50%)";
-      soundDiv.style.justifyContent = "center"; 
+      soundDiv.style.justifyContent = "center"; // Aligne le texte pile au milieu de sa boîte HTML
       
+      // CONFIGURATION RESPONSIVE : ADAPTATION PC (1 SEULE LIGNE DES LE DEBUT)
       if (window.innerWidth >= 1024) {
-        soundDiv.style.top = "70px";
+        // --- SUR PC ---
         soundDiv.style.width = "600px"; 
+        if (gameState.status === 'start') {
+          soundDiv.style.top = "70px"; // En jeu sur PC, sous la pause
+        } else {
+          soundDiv.style.top = "95px"; // À l'accueil sur PC
+        }
       } else {
-        // Version Mobile : Coordonnées du bouton rond
-        soundDiv.style.top = "105px"; /* Descendu un poil pour laisser de la place au gros mot PAUSE */
-        soundDiv.style.width = "70px"; 
+        // --- SUR MOBILE / TABLETTE ---
+        soundDiv.style.top = "105px";
+        soundDiv.style.width = "50px"; // Petit bouton circulaire compact
       }
     }
   }
 
+  // On n'affiche le score et les PV que si la partie a commencé, est en pause ou en Game Over
   if (gameState.status !== 'start' && gameState.status !== 'gameOver' && gameState.status !== 'paused') return;
 
   ctx.save(); 
   ctx.fillStyle = "#ffffff"; 
   ctx.font = "bold 20px 'Courier New', monospace"; 
   
+  // --- A. SCORE (HAUT À GAUCHE) ---
   ctx.textAlign = "left"; 
   ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
   
+  // --- B. POINTS DE VIE / HP (HAUT À DROITE) ---
   ctx.textAlign = "right"; 
   const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
   ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
 
-  // --- C. INDICATEUR DE PAUSE CENTRALE ---
+  // --- C. INDICATEUR DE PAUSE CENTRALE ADAPTATIF PC/MOBILE ---
   if (!gameState.isPaused && gameState.status === 'start') {
     ctx.save(); 
     ctx.textAlign = "center"; 
     
     if (window.innerWidth >= 1024) {
+      // --- VISUEL PC ---
       ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
       ctx.font = "14px 'Courier New', monospace"; 
-      ctx.fillText("Press P to PAUSE", canvas.width / 2, 40); 
+      ctx.fillText("Press P to PAUSE", canvas.width / 2, 40); // Ligne 1 au milieu
     } else {
-      // --- VISUEL MOBILE ÉPURÉ GROSSI ---
+      // --- VISUEL MOBILE ÉPURÉ ---
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; 
-      // CORRECTION DU MOT PAUSE : Passé de 16px à 32px pour qu'il soit bien lisible !
       ctx.font = "bold 32px 'Courier New', monospace"; 
       ctx.fillText("PAUSE", canvas.width / 2, 75); 
     }
@@ -628,23 +695,25 @@ function drawPauseScreen() {
   if (!gameState.isPaused) return;
 
   ctx.save();
-  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.65)"; // Un poil plus sombre pour faire ressortir le texte orange
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
   ctx.fillStyle = "orange";
   ctx.font = "bold 50px 'Courier New', monospace";
   ctx.textAlign = "center";
-  ctx.fillText("PAUSE", canvas.width / 2, canvas.height / 2);
+  ctx.fillText("PAUSE", canvas.width / 2, canvas.height / 2); // Écrit pile au milieu de l'écran
   
   ctx.fillStyle = "#ffffff";
   ctx.font = "16px 'Courier New', monospace";
   
   let isTactile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  let resumeMessage = "Touch top of screen to resume";
+  
+  // CORRECTION CONFORME TEXTE : "Touch PAUSE to resume" au lieu de "Touch center..."
+  let resumeMessage = "Touch PAUSE to resume";
   
   if (window.innerWidth >= 1024) {
     if (isTactile) {
-      resumeMessage = "Press P or touch top of screen to resume";
+      resumeMessage = "Press P or touch PAUSE to resume";
     } else {
       resumeMessage = "Press P to resume";
     }
