@@ -283,40 +283,43 @@ function drawUI() {
   if (gameState.status !== 'start' && gameState.status !== 'gameOver' && gameState.status !== 'paused') return;
 
   ctx.save(); // Sécurise les réglages graphiques du Canvas
-  ctx.fillStyle = "#ffffff"; // Choix de la couleur blanche pour les textes de l'UI
-  ctx.font = "bold 20px 'Courier New', monospace"; // Style de police rétro typé arcade
+  ctx.fillStyle = "#ffffff"; // Choix de la couleur blanche opaque pour le Score et les HP
+  ctx.font = "bold 20px 'Courier New', monospace"; // Style de police rétro arcade
   
-  // --- A. AFFICHAGE DU SCORE (HAUT À GAUCHE) ---
-  ctx.textAlign = "left"; // Alignement du texte calé vers la gauche
+  // --- A. AFFICHAGE DU SCORE (HAUT À GAUCHE - LIGNE 1) ---
+  ctx.textAlign = "left"; // Alignement calé vers la gauche
   ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
   
-  // --- B. INDICATEUR DE PAUSE ADAPTATIF - LOGIQUE MOBILE-FIRST ---
+  // --- B. AFFICHAGE DES POINTS DE VIE / HP (HAUT À DROITE - LIGNE 1) ---
+  ctx.textAlign = "right"; // Alignement calé vers la droite
+  const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
+  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
+
+  // --- C. INDICATEUR DE PAUSE ADAPTATIF (HAUT AU MILIEU - NOUVELLE LIGNE 2) ---
   // On n'affiche l'indicateur d'aide que si le jeu est en cours et PAS déjà en pause
   if (!gameState.isPaused && gameState.status === 'start') {
-    ctx.save(); 
-    ctx.textAlign = "center"; 
-    ctx.font = "14px 'Courier New', monospace"; 
+    ctx.save(); // Sauvegarde locale pour modifier la police et la couleur
+    ctx.textAlign = "center"; // Alignement parfaitement centré au milieu de l'écran
+    
+    // CORRECTION LUMINOSITÉ : Passage à 90% d'opacité (0.9) pour être bien clair sur tous les écrans
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
+    ctx.font = "14px 'Courier New', monospace"; // Police plus petite pour ne pas encombrer le jeu
 
-    // Mobile-First par défaut : Opacité forte à 80% (0.8) pour que ce soit bien lisible sur smartphone
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; 
+    // Approche Mobile-First par défaut pour le message
     let pauseMessage = "Touch here to PAUSE";
     
-    // Exception PC : Si l'écran est grand, on peut baisser l'opacité à 50% (0.5) pour le design
+    // Exception Bureau : Si l'écran dépasse 1024px de large, on affiche la touche PC
     if (window.innerWidth >= 1024) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       pauseMessage = "Press P to PAUSE";
     }
 
-    ctx.fillText(pauseMessage, canvas.width / 2, 40); 
-    ctx.restore(); 
+    // CORRECTION EMPLACEMENT : On descend le texte à Y = 70 (juste en dessous de la ligne du Score/HP)
+    // Cela évite que les textes se chevauchent sur les petits écrans de smartphones
+    ctx.fillText(pauseMessage, canvas.width / 2, 70); 
+    ctx.restore(); // Restaure l'état pour la suite du Canvas
   }
-
-  // --- C. AFFICHAGE DES POINTS DE VIE (HAUT À DROITE) ---
-  ctx.textAlign = "right"; // Alignement du texte calé vers la droite de l'écran
-  const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
-  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
   
-  ctx.restore(); 
+  ctx.restore(); // Restaure l'état d'origine du Canvas
 }
 
 // ======================================================================
@@ -336,11 +339,11 @@ function drawGameOver() {
   
   ctx.fillStyle = "#ffffff";
   ctx.font = "18px 'Courier New', monospace";
-  ctx.fillText("Touchez l'écran ou ESPACE pour RESTART", canvas.width / 2, canvas.height / 2 + 30);
+  ctx.fillText("Tap screen or press SPACE to RESTART", canvas.width / 2, canvas.height / 2 + 30);
   
   ctx.fillStyle = "#aaaaaa";
   ctx.font = "22px 'Courier New', monospace";
-  ctx.fillText(`Score Final: ${gameState.score}`, canvas.width / 2, canvas.height / 2 + 80);
+  ctx.fillText(`Final Score: ${gameState.score}`, canvas.width / 2, canvas.height / 2 + 80);
   ctx.restore();
 }
 
@@ -361,7 +364,7 @@ function drawPauseScreen() {
   
   ctx.fillStyle = "#ffffff";
   ctx.font = "16px 'Courier New', monospace";
-  ctx.fillText("Appuyez sur P ou touchez le haut de l'écran pour reprendre", canvas.width / 2, canvas.height / 2 + 40);
+  ctx.fillText("Press P or touch top of screen to resume", canvas.width / 2, canvas.height / 2 + 40);
   ctx.restore();
 }
 
@@ -452,55 +455,20 @@ function drawPlayerAndShield(hero, vars) {
   }
 }
 
-// ======================================================================
-// 1. INITIALISATION DE LA STRUCTURE DU JOUEUR ET DES COMPOSANTS
-// ======================================================================
 const divRun = document.getElementById("div_run");
-
-// Définition de l'objet joueur avec ses coordonnées à échelle réduite (65x40)
-const hero = { 
-  x: window.innerWidth / 2 - 32, 
-  y: window.innerHeight - 80, 
-  speed: 500, 
-  isExploding: false, 
-  isProtected: false 
-};
-
-// Centralisation des variables techniques gérant l'animation du Canvas
-const anim = { 
-  drawExplodeRun: false, 
-  explodeX: 0, 
-  explodeY: 0, 
-  spriteExplodeX: 0, 
-  accudeltaTime: 0, 
-  heroSpriteExplodeX: 0, 
-  spriteExplodeCountCurrentFrame: 1, 
-  fontSize: 150 
-};
-
-// Déclarations des limites latérales de déplacement et du cooldown de tir
+const hero = { x: window.innerWidth / 2 - 32, y: window.innerHeight - 80, speed: 500, isExploding: false, isProtected: false };
+const anim = { drawExplodeRun: false, explodeX: 0, explodeY: 0, spriteExplodeX: 0, accudeltaTime: 0, heroSpriteExplodeX: 0, spriteExplodeCountCurrentFrame: 1, fontSize: 150 };
 let max_x = window.innerWidth - 65, lastHeroFireTime = -200, coolDownHeroFireTime = 200;
 
-// Initialisations immédiates des modules autonomes
-initStars(100); 
-initControls(); 
-spawnInitialEnemies(); // Spawn caché initial de la vague de départ (voir utils.js)
+initStars(100); initControls(); spawnInitialEnemies();
+assets.spaceship.onload = () => { max_x = (canvas.width - 65); hero.x = ((canvas.width - 65) / 2); hero.y = (canvas.height - 40 - 15); };
 
-// Recalcul du centrage et de la limite droite dès que le vaisseau est chargé en mémoire
-assets.spaceship.onload = () => { 
-  max_x = (canvas.width - 65); 
-  hero.x = ((canvas.width - 65) / 2); 
-  hero.y = (canvas.height - 40 - 15); 
-};
-
-// Réajustement dynamique de la position du joueur si la fenêtre change de taille (Fermeture inspecteur)
 window.addEventListener('resize', () => {
   max_x = (canvas.width - 65);
   if (gameState.status === 'notYetStarted') { hero.x = ((canvas.width - 65) / 2); }
-  hero.y = (canvas.height - 40 - 15); // Re-plaque le joueur sur le vrai bas de la fenêtre
+  hero.y = (canvas.height - 40 - 15);
 });
 
-// Événement d'activation visuelle au clic direct sur le bouton HTML RUN
 divRun.addEventListener("click", () => {             
   if (gameState.status === 'notYetStarted') {
     const rect = divRun.getBoundingClientRect();
@@ -509,98 +477,53 @@ divRun.addEventListener("click", () => {
   }
 });    
 
-// Écouteurs de réinitialisation physique si l'état est en mode Game Over
 [window, 'touchstart'].forEach(ev => window.addEventListener(ev, () => { if (gameState.status === 'gameOver') resetGame(hero); }));
 window.addEventListener("keydown", (e) => { if (gameState.status === 'gameOver' && e.code === "Space") resetGame(hero); });
 
-// ______________________________________________________________________
-// 2. LOGIQUE PHYSIQUE DU MOTEUR (UPDATE)
-// ______________________________________________________________________
 function update() {
   if (gameState.status === 'gameOver') return;
-  
-  // --- SÉCURITÉ PAUSE ---
-  // Si le booléen de pause est activé, on fige immédiatement tous les calculs physiques
-  // (Les positions s'arrêtent net, aucun mouvement ni tir n'est calculé)
   if (gameState.isPaused) return;
 
-  // Calcul du déplacement horizontal du vaisseau joueur (Clavier PC ou Tactile Smartphone)
   if (!hero.isExploding) {
     if (inputs.keyLeft) { hero.x -= Math.floor(hero.speed * gameState.dt); if (hero.x < 0) hero.x = 0; }
     if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
-    
-    // Logique d'injection d'un projectile laser joueur s'il fait feu et que le cooldown est prêt
     if (inputs.keySpace && (performance.now() - lastHeroFireTime > coolDownHeroFireTime)) {
-      gameState.arrayLaser.push(new Laser((hero.x + 65 / 2 - 21), hero.y - 35)); 
-      lastHeroFireTime = performance.now();
+      gameState.arrayLaser.push(new Laser((hero.x + 65 / 2 - 21), hero.y - 35)); lastHeroFireTime = performance.now();
     }
   }
 
-  // Déplacement fluide de tous les tirs lasers actifs du joueur
   gameState.arrayLaser.forEach(laser => laser.update());
-  // Garbage Collector inversé : nettoie de la mémoire les lasers hors-écran du haut (Y < 0)
   for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
 
-  // Maintien actif et gestion de la flotte d'ennemis
   if (gameState.status === 'start') {
     while (gameState.enemies.length < 10) {
       let spawnX = gameState.deletedEnemiesPosX.length > 0 ? gameState.deletedEnemiesPosX.shift() : getRandom(50, canvas.width - 50);
       gameState.enemies.push(new Enemy(getRandom(spawnX - 10, spawnX - 10), getRandom(-800, -100)));
     }
     gameState.enemies.forEach(en => en.update(hero.x, hero.isExploding, hero.isProtected));
-    
-    // Détection déportée des impacts physiques géométriques (voir collisions.js)
     checkCollisions(hero, () => { hero.isExploding = true; gameState.playerHp--; }); 
   }
 }
 
-// ______________________________________________________________________
-// 3. LOGIQUE GRAPHISME DE RENDU (DRAW)
-// ______________________________________________________________________
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Nettoyage de la frame précédente
-  drawStars(); // Rendu du fond d'étoiles infini (stars.js)
+  ctx.clearRect(0, 0, canvas.width, canvas.height); drawStars();
 
-  if (anim.drawExplodeRun) drawBoutonExplosion(anim); // Gère le sprite d'explosion du bouton d'accueil
-  
-  // On continue de dessiner les ennemis même en mode Pause pour qu'ils ne disparaissent pas de l'écran !
-  if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) {
-    drawEnemiesAndTheirLasers(); 
-  }
+  if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
+  if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) drawEnemiesAndTheirLasers(); 
 
-  // Dessin des lasers du joueur réduits de moitié (21px x 36px)
   gameState.arrayLaser.forEach(l => ctx.drawImage(assets.userLaser, 300, 25, 60, 110, l.x, l.y, 21, 36)); 
-  
-  drawPlayerAndShield(hero, anim); // Dessin du vaisseau, du texte zoomé jaune ou de son explosion
+  drawPlayerAndShield(hero, anim); 
 
-  drawUI();       // Rendu dynamique du score et des PV (ui.js)
-  drawGameOver(); // Rendu dynamique de l'écran rouge de fin (ui.js)
-  
-  // --- RENDU PAUSE ---
-  // On appelle la fonction de dessin de la pause en dernier pour qu'elle s'affiche au-dessus de tout le monde
+  drawUI(); 
+  drawGameOver(); 
   drawPauseScreen(); 
 }
 
-// ______________________________________________________________________
-// 4. BOUCLE DE LOGIQUE PRINCIPALE CYCLIQUE (GAME LOOP)
-// ______________________________________________________________________
 function gameLoop(hrt) { 
   if (!hrt) hrt = performance.now();
-  
-  // --- ADAPTATION CRITIQUE DU TIMING EN PAUSE ---
-  // Si le jeu est en pause, on force le Delta Time à zéro pour stopper les mouvements physiques.
-  // Cependant, on continue de mettre à jour la variable "lastTime" avec la valeur "hrt".
-  // Pourquoi ? Pour éviter que le chronomètre interne calcule un énorme décalage invisible
-  // pendant que vous étiez en pause, ce qui ferait se téléporter les ennemis au redémarrage !
-  if (gameState.isPaused) {
-    gameState.dt = 0;
-    gameState.lastTime = hrt;
-  } else {
-    gameState.dt = (hrt - gameState.lastTime) / 1000; 
-    gameState.lastTime = hrt;
-  }
+  if (gameState.isPaused) { gameState.dt = 0; gameState.lastTime = hrt; } 
+  else { gameState.dt = (hrt - gameState.lastTime) / 1000; gameState.lastTime = hrt; }
 
-  // Physique d'accueil : permet de détruire le bouton RUN en lui tirant dessus avec un laser
   if (gameState.status === 'notYetStarted') {
     const divRunPosCurrent = divRun.getBoundingClientRect();
     for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) {
@@ -613,7 +536,7 @@ function gameLoop(hrt) {
     }
   }
 
-  update(); draw(); window.requestAnimationFrame(gameLoop); // Relance le cycle au prochain rafraîchissement
+  update(); draw(); window.requestAnimationFrame(gameLoop);
 }
-window.requestAnimationFrame(gameLoop); // Initialisation de départ du moteur de jeu
+window.requestAnimationFrame(gameLoop);
 
