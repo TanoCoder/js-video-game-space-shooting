@@ -183,26 +183,37 @@ function initControls() {
 }
 
 // ======================================================================
-// MODULE AUDIO RETRO (SYNTHÉTISEUR AVEC FILTRE MUET)
+// MODULE AUDIO RETRO (SYNTHÉTISEUR AVEC DÉVERROUILLAGE MOBILE)
 // ======================================================================
 
 let audioCtx = null;
 
+// --- DÉVERROUILLAGE ULTIME POUR SMARTPHONE ---
+// Cette fonction force le téléphone à ouvrir ses vannes audio au premier tapotement
 function initAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
+  // Force la reprise si le système mobile l'a mis en veille de sécurité
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
 }
 
+// NOUVEAUTÉ SMARTPHONE : On écoute le tout premier contact tactile sur l'écran
+// pour déverrouiller secrètement les haut-parleurs en tâche de fond.
+// Ainsi, le téléphone saura que l'audio est autorisé pour la suite !
+['click', 'touchstart'].forEach(eventName => {
+  window.addEventListener(eventName, () => {
+    initAudioContext();
+  }, { once: true }); // { once: true } supprime l'écouteur juste après le premier clic pour économiser la batterie
+});
+
 // --- 1. BRUITAGE : TIR DE LASER JOUEUR ---
 function playLaserSound() {
-  // SÉCURITÉ : Si le mode muet est actif dans le jeu, on coupe court immédiatement
   if (gameState.isMuted) return;
 
-  initAudioContext(); 
+  initAudioContext(); // Rappel de sécurité
   if (!audioCtx) return;
 
   const now = audioCtx.currentTime;
@@ -225,7 +236,6 @@ function playLaserSound() {
 
 // --- 2. BRUITAGE : EXPLOSION ENNEMIE ---
 function playExplosionSound() {
-  // SÉCURITÉ : Si le mode muet est actif, aucun son ne sort de la déflagration
   if (gameState.isMuted) return;
 
   initAudioContext();
