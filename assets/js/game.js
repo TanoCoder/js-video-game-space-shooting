@@ -105,14 +105,12 @@ function initControls() {
   // A. INTERCEPTION DES COMMANDES CLAVIER (PC)
   // ======================================================================
   window.addEventListener("keydown", e => {
-    // Touche P pour la Pause
     if (e.key === "p" || e.key === "P") {
       if (gameState.status === 'start' || gameState.isPaused) {
         gameState.isPaused = !gameState.isPaused;
       }
     }
     
-    // NOUVEAUTÉ CLAVIER : Appuyer sur M inverse le mode Muet (Mute / Unmute)
     if (e.key === "m" || e.key === "M") {
       gameState.isMuted = !gameState.isMuted;
     }
@@ -129,7 +127,7 @@ function initControls() {
   });
 
   // ======================================================================
-  // B. INTERCEPTION DES COMMANDES TACTILES (SMARTPHONE)
+  // B. INTERCEPTION DES COMMANDES TACTILES (SMARTPHONE / TABLETTE)
   // ======================================================================
   window.addEventListener("touchstart", e => {
     if (e.target.id === "canvas") { e.preventDefault(); }
@@ -137,28 +135,32 @@ function initControls() {
     for (let i = 0; i < e.changedTouches.length; i++) {
       let touch = e.changedTouches[i];
       
-      // ZONE TACTILE PAUSE ÉLARGIE (15% supérieurs)
+      // Hitbox confortable : prend les 15% supérieurs de la hauteur totale de l'écran
       let pauseZoneHeight = window.innerHeight * 0.15;
 
-      if (touch.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused)) {
+      if (touch.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused || gameState.status === 'notYetStarted')) {
         
-        // CORRECTION TACTILE MULTI-ZONES : 
-        // Si le doigt tape pile au centre horizontal (le bouton audio se trouvant au milieu de l'écran),
-        // on bascule le mode Muet au lieu de la pause !
+        // CORRECTION ERGONOMIE : Calcul d'un couloir central très large (120 pixels de tolérance)
+        // pour que le pouce ne rate jamais le bouton audio, peu importe l'écran.
         let screenCenter = window.innerWidth / 2;
-        if (touch.clientX > screenCenter - 100 && touch.clientX < screenCenter + 100 && touch.clientY > 50) {
+        let isClickInAudioCenter = (touch.clientX > screenCenter - 120) && (touch.clientX < screenCenter + 120);
+
+        if (isClickInAudioCenter) {
+          // Si le joueur vise le centre du couloir haut, on commute uniquement le son (Mute / Unmute)
           gameState.isMuted = !gameState.isMuted;
-        } else {
-          // Sinon, si on tape sur les côtés de la zone haute, c'est bien la Pause standard
+        } else if (gameState.status === 'start' || gameState.isPaused) {
+          // Si le joueur vise les côtés gauches ou droits du bandeau haut, on enclenche la pause
           gameState.isPaused = !gameState.isPaused;
         }
-        return; 
+        return; // Interrompt pour éviter de déplacer le vaisseau joueur
       }
 
+      // Gestion de l'armement automatique du tir
       if (gameState.status === 'start' || gameState.status === 'notYetStarted') {
         inputs.keySpace = true;
       }
 
+      // Mouvements horizontaux standards (Écran divisé en deux sections)
       if (touch.clientX < window.innerWidth / 2) {
         inputs.keyLeft = true; touchLeftId = touch.identifier; 
       } else {
@@ -183,80 +185,167 @@ function initControls() {
 }
 
 // ======================================================================
-// MODULE AUDIO RETRO (SYNTHÉTISEUR AVEC DÉVERROUILLAGE MOBILE)
+// MODULE AUDIO RETRO (MIXAGE CORRIGÉ : EXPLOSIONS BAISSÉES D'UN CRAN)
 // ======================================================================
 
 let audioCtx = null;
 
-// --- DÉVERROUILLAGE ULTIME POUR SMARTPHONE ---
-// Cette fonction force le téléphone à ouvrir ses vannes audio au premier tapotement
+// --- DÉVERROUILLAGE POUR SMARTPHONE ---
 function initAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  // Force la reprise si le système mobile l'a mis en veille de sécurité
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
 }
 
-// NOUVEAUTÉ SMARTPHONE : On écoute le tout premier contact tactile sur l'écran
-// pour déverrouiller secrètement les haut-parleurs en tâche de fond.
-// Ainsi, le téléphone saura que l'audio est autorisé pour la suite !
-['click', 'touchstart'].forEach(eventName => {
+// Déverrouillage automatique au tout premier tapotement mobile
+['click', 'touchstart', 'keydown'].forEach(eventName => {
   window.addEventListener(eventName, () => {
     initAudioContext();
-  }, { once: true }); // { once: true } supprime l'écouteur juste après le premier clic pour économiser la batterie
+    if (audioCtx && audioCtx.state !== 'suspended') {
+      const dummyOsc = audioCtx.createOscillator();
+      const dummyGain = audioCtx.createGain();
+      dummyGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      dummyOsc.connect(dummyGain);
+      dummyGain.connect(audioCtx.destination);
+      dummyOsc.start();
+      dummyOsc.stop(audioCtx.currentTime + 0.01);
+    }
+  }, { once: true });
 });
 
-// --- 1. BRUITAGE : TIR DE LASER JOUEUR ---
+// --- 1. BRUITAGE : TIR DE LASER JOUEUR ("PEW !" TRANCHANT) ---
 function playLaserSound() {
   if (gameState.isMuted) return;
-
-  initAudioContext(); // Rappel de sécurité
-  if (!audioCtx) return;
+  initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
 
   const now = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
 
   osc.type = 'triangle'; 
-  osc.frequency.setValueAtTime(880, now); 
-  osc.frequency.exponentialRampToValueAtTime(110, now + 0.15); 
+  osc.frequency.setValueAtTime(1100, now); 
+  osc.frequency.exponentialRampToValueAtTime(200, now + 0.12); 
 
-  gainNode.gain.setValueAtTime(0.3, now); 
-  gainNode.gain.linearRampToValueAtTime(0, now + 0.15); 
+  gainNode.gain.setValueAtTime(0.04, now); 
+  gainNode.gain.linearRampToValueAtTime(0, now + 0.12); 
 
-  osc.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-
-  osc.start(now);
-  osc.stop(now + 0.15);
+  osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+  osc.start(now); osc.stop(now + 0.12);
 }
 
-// --- 2. BRUITAGE : EXPLOSION ENNEMIE ---
+// --- 2. BRUITAGE : EXPLOSION ENNEMIE (ATTÉNUÉE D'UN CRAN) ---
 function playExplosionSound() {
   if (gameState.isMuted) return;
+  initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
 
-  initAudioContext();
-  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const duration = 0.35; 
+
+  // --- Composante 1 : Le froissement métallique (Bruit blanc) ---
+  const bufferSize = audioCtx.sampleRate * duration;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+  
+  const noiseNode = audioCtx.createBufferSource();
+  noiseNode.buffer = buffer;
+  
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'lowpass';
+  noiseFilter.frequency.setValueAtTime(2500, now);
+  noiseFilter.frequency.exponentialRampToValueAtTime(50, now + duration);
+  
+  const noiseGain = audioCtx.createGain();
+  // CORRECTION MIXAGE : Baissé de 0.45 à 0.25 pour adoucir le crépitement
+  noiseGain.gain.setValueAtTime(0.25, now);
+  noiseGain.gain.linearRampToValueAtTime(0, now + duration);
+  
+  noiseNode.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
+
+  // --- Composante 2 : L'onde de choc lourde (Onde TRIANGLE du Héros) ---
+  const bassOsc = audioCtx.createOscillator();
+  const bassGain = audioCtx.createGain();
+  
+  bassOsc.type = 'triangle'; 
+  bassOsc.frequency.setValueAtTime(100, now); 
+  bassOsc.frequency.linearRampToValueAtTime(15, now + duration); 
+
+  // CORRECTION MIXAGE : Baissé de 0.65 à 0.35 pour calmer l'impact de basse
+  bassGain.gain.setValueAtTime(0.35, now); 
+  bassGain.gain.linearRampToValueAtTime(0, now + duration);
+  
+  bassOsc.connect(bassGain); bassGain.connect(audioCtx.destination);
+
+  noiseNode.start(now); noiseNode.stop(now + duration);
+  bassOsc.start(now); bassOsc.stop(now + duration);
+}
+
+// --- 3. BRUITAGE : TIR DE LASER ENNEMI ("ZAP !" ALIEN) ---
+function playEnemyLaserSound() {
+  if (gameState.isMuted) return;
+  initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
 
   const now = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
 
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(180, now);
-  osc.frequency.linearRampToValueAtTime(40, now + 0.3);
+  osc.type = 'square'; 
+  osc.frequency.setValueAtTime(800, now); 
+  osc.frequency.linearRampToValueAtTime(250, now + 0.1); 
 
-  gainNode.gain.setValueAtTime(0.4, now); 
-  gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
+  gainNode.gain.setValueAtTime(0.04, now); 
+  gainNode.gain.linearRampToValueAtTime(0, now + 0.1); 
 
-  osc.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+  osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+  osc.start(now); osc.stop(now + 0.1);
+}
 
-  osc.start(now);
-  osc.stop(now + 0.3);
+// --- 4. BRUITAGE : EXPLOSION DE LA MORT DU JOUEUR (CRASH ATTÉNUÉ ÉGALEMENT) ---
+function playPlayerExplosionSound() {
+  if (gameState.isMuted) return;
+  initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
+
+  const now = audioCtx.currentTime;
+  const duration = 0.65; 
+
+  const bufferSize = audioCtx.sampleRate * duration;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+  
+  const noiseNode = audioCtx.createBufferSource();
+  noiseNode.buffer = buffer;
+  
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'lowpass';
+  noiseFilter.frequency.setValueAtTime(2500, now);
+  noiseFilter.frequency.exponentialRampToValueAtTime(50, now + duration);
+  
+  const noiseGain = audioCtx.createGain();
+  // Baissé à 0.4 pour le joueur aussi
+  noiseGain.gain.setValueAtTime(0.4, now);
+  noiseGain.gain.linearRampToValueAtTime(0, now + duration);
+  
+  noiseNode.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
+
+  const bassOsc = audioCtx.createOscillator();
+  const bassGain = audioCtx.createGain();
+  
+  bassOsc.type = 'triangle'; 
+  bassOsc.frequency.setValueAtTime(90, now);
+  bassOsc.frequency.linearRampToValueAtTime(10, now + duration);
+
+  // Baissé à 0.5 pour la basse joueur
+  bassGain.gain.setValueAtTime(0.5, now);
+  bassGain.gain.linearRampToValueAtTime(0, now + duration);
+  
+  bassOsc.connect(bassGain); bassGain.connect(audioCtx.destination);
+
+  noiseNode.start(now); noiseNode.stop(now + duration);
+  bassOsc.start(now); bassOsc.stop(now + duration);
 }
 
 class Laser {
@@ -339,6 +428,9 @@ class Enemy {
         
         // Ajout du tir dans le tableau autonome
         this.laser.push({ x: laserSpawnX, y: laserSpawnY });
+        
+        // INTÉGRATION BRUITAGE : Déclenche le son de tir alien !
+        playEnemyLaserSound(); 
       }
     }
 
@@ -351,7 +443,7 @@ class Enemy {
   }
 }
 
-// Fonction principale globale qui calcule les impacts selon les tailles dynamiques
+// Fonction globale de calcul géométrique des boîtes d'impacts actifs
 function checkCollisions(hero, onHeroHit) {
   if (gameState.status === 'gameOver') return;
 
@@ -362,7 +454,6 @@ function checkCollisions(hero, onHeroHit) {
       // A. COLLISION : Lasers Joueur contre Vaisseau Ennemi
       // ==================================================================
       gameState.arrayLaser = gameState.arrayLaser.filter(laser => {
-        // CORRECTION DYNAMIQUE : Utilisation des variables de taille de l'ennemi
         let hit = (laser.x >= en.x - 10) && 
                   (laser.x <= en.x + gameState.enemyWidth) && 
                   (laser.y <= en.y + gameState.enemyHeight) && 
@@ -370,6 +461,9 @@ function checkCollisions(hero, onHeroHit) {
         if (hit) {
           en.isExploding = true;
           gameState.score += 100;
+          
+          // INTÉGRATION BRUITAGE : Joue le son de destruction alien !
+          playExplosionSound(); 
         }
         return !hit;
       });
@@ -379,12 +473,14 @@ function checkCollisions(hero, onHeroHit) {
       // ==================================================================
       en.laser.forEach(l => {
         if (!hero.isExploding && !hero.isProtected) {
-          // CORRECTION DYNAMIQUE : Utilisation des variables de taille du joueur
           if ((l.x >= hero.x - 10) && 
               (l.x <= hero.x + gameState.playerWidth) && 
               (l.y <= hero.y + gameState.playerHeight) && 
               (l.y >= hero.y)) {
             onHeroHit();
+            
+            // INTÉGRATION BRUITAGE : Joue le gros crash sonore subi par le joueur !
+            playPlayerExplosionSound(); 
           }
         }
       });
@@ -393,13 +489,15 @@ function checkCollisions(hero, onHeroHit) {
       // C. COLLISION : Corps à corps (Vaisseau contre Vaisseau)
       // ==================================================================
       if (!hero.isExploding && !hero.isProtected) {
-        // CORRECTION DYNAMIQUE : Calcul géométrique basé sur l'échelle active
         if (hero.x <= en.x + gameState.enemyWidth && 
             hero.x + gameState.playerWidth >= en.x && 
             hero.y <= en.y + gameState.enemyHeight && 
             hero.y + gameState.playerHeight >= en.y) {
           en.isExploding = true;
           onHeroHit();
+          
+          // INTÉGRATION BRUITAGE : Joue le gros crash ici aussi !
+          playPlayerExplosionSound(); 
         }
       }
     }
@@ -410,68 +508,83 @@ function checkCollisions(hero, onHeroHit) {
 // 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE, PAUSE, VIE ET AUDIO)
 // ======================================================================
 function drawUI() {
-  if (gameState.status !== 'start' && gameState.status !== 'gameOver' && gameState.status !== 'paused') return;
+  // --- A. LES TEXTES DE COMBAT (SCORE ET VIE - LIGNE 1 : Y=40) ---
+  if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.status === 'paused') {
+    ctx.save(); 
+    ctx.fillStyle = "#ffffff"; 
+    ctx.font = "bold 20px 'Courier New', monospace"; 
+    
+    ctx.textAlign = "left"; 
+    ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
+    
+    ctx.textAlign = "right"; 
+    const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
+    ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
+    ctx.restore();
+  }
 
-  ctx.save(); 
-  ctx.fillStyle = "#ffffff"; 
-  ctx.font = "bold 20px 'Courier New', monospace"; 
-  
-  // --- A. SCORE (HAUT À GAUCHE) ---
-  ctx.textAlign = "left"; 
-  ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
-  
-  // --- B. POINTS DE VIE / HP (HAUT À DROITE) ---
-  ctx.textAlign = "right"; 
-  const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
-  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
-
-  // --- C. INDICATEURS CENTRAUX (PAUSE ADAPTATIVE ET BOUTON AUDIO) ---
-  if (!gameState.isPaused && gameState.status === 'start') {
+  // --- B. INDICATEURS CENTRAUX ADAPTATIFS ---
+  if (gameState.status === 'notYetStarted' || (!gameState.isPaused && gameState.status === 'start')) {
     ctx.save(); 
     ctx.textAlign = "center"; 
     ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
     ctx.font = "14px 'Courier New', monospace"; 
 
+    // Détection si l'appareil possède un écran tactile actif
     let isTactile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     
-    // Définition de l'altitude verticale par défaut (Ligne 2 pour mobile)
-    let textY = 70;
-    let audioY = 95;
+    // Altitudes par défaut pour Mobile / Tablette
+    let textY = 70;  // Ligne 2 : Aide à la pause
+    let audioY = 105; // CORRECTION ERGONOMIE : Descendu en Ligne 3 pour aérer l'écran mobile !
 
-    if (window.innerWidth >= 1024) {
-      // Configuration PC sur la ligne 1
-      textY = 40;
-      audioY = 40;
-      ctx.textAlign = "center";
-      
-      // Texte d'aide PC adapté à l'audio
-      if (isTactile) {
-        ctx.fillText("Press P to PAUSE / M to SOUND", canvas.width / 2, textY);
+    // --- RENDU DU TEXTE D'AIDE À LA PAUSE (UNIQUEMENT SI LE JEU TOURNE) ---
+    if (gameState.status === 'start') {
+      if (window.innerWidth >= 1024) {
+        textY = 40; audioY = 40; // Sur grand écran PC, tout reste aligné sur la Ligne 1
+        if (isTactile) {
+          ctx.fillText("Press P to PAUSE", canvas.width / 2 - 120, textY);
+        } else {
+          ctx.fillText("Press P to PAUSE", canvas.width / 2, textY);
+        }
       } else {
-        ctx.fillText("Press P to PAUSE (M: Mute)", canvas.width / 2, textY);
+        ctx.fillText("Touch here to PAUSE", canvas.width / 2, textY);
+      }
+    } else if (gameState.status === 'notYetStarted' && window.innerWidth >= 1024) {
+      audioY = 40; // Calage PC à l'écran d'accueil
+    }
+    
+    // --- RENDU DE LA CONSIGNE AUDIO ADAPTATIVE DÉTAILLÉE ---
+    ctx.font = "15px 'Courier New', monospace";
+    let soundIcon = "";
+    
+    if (window.innerWidth >= 1024) {
+      // CONFIGURATION GRAND ÉCRAN (PC)
+      if (isTactile) {
+        // Grand écran PC + Option tactile active
+        soundIcon = gameState.isMuted ? "🔇 Press M or Touch to turn SOUND ON" : "🔊 Press M or Touch to MUTE";
+      } else {
+        // Grand écran PC de bureau standard
+        soundIcon = gameState.isMuted ? "🔇 Press M to turn SOUND ON" : "🔊 Press M to MUTE";
       }
     } else {
-      // Rendu Mobile couloir centré
-      ctx.fillText("Touch here to PAUSE", canvas.width / 2, textY);
+      // CONFIGURATION MOBILE & TABLETTE (Le message par défaut est toujours tactile court)
+      soundIcon = gameState.isMuted ? "🔇 Touch to turn SOUND ON" : "🔊 Touch to MUTE";
     }
-    
-    // --- DESSIN DU BOUTON AUDIO ÉMOTE RETRO ---
-    // Affiche une icône d'enceinte barrée rouge si muet, ou verte si le son est actif
-    ctx.font = "16px 'Courier New', monospace";
-    let soundIcon = gameState.isMuted ? "🔇 SOUND: OFF" : "🔊 SOUND: ON";
+
+    // Choix de la couleur : rouge si éteint, vert brillant si allumé
     ctx.fillStyle = gameState.isMuted ? "#ff3333" : "#33ff33";
     
-    // Sur PC, on décale légèrement sur le côté pour ne pas chevaucher le texte, sur Mobile on le centre en dessous (Y=95)
+    // Positionnement horizontal
     let audioX = canvas.width / 2;
-    if (window.innerWidth >= 1024) {
-      audioX = canvas.width / 2 + 180; // Décale à droite du texte d'aide sur PC
+    if (window.innerWidth >= 1024 && gameState.status === 'start') {
+      // Sur PC en jeu, on décale proprement le grand message sur la droite de la ligne 1
+      ctx.textAlign = "left";
+      audioX = canvas.width / 2 + 60; 
     }
+    
     ctx.fillText(soundIcon, audioX, audioY);
-
     ctx.restore(); 
   }
-  
-  ctx.restore(); 
 }
 
 // ======================================================================
@@ -760,12 +873,17 @@ window.addEventListener('resize', () => {
   hero.y = (canvas.height - gameState.playerHeight - 30); // Maintient la hauteur de sécurité
 });
 
-// Événement de clic sur le bouton d'accueil START
+// Événement de clic direct sur le bouton d'accueil START (si on clique dessus avec la souris/doigt)
 divRun.addEventListener("click", () => {             
   if (gameState.status === 'notYetStarted') {
     const rect = divRun.getBoundingClientRect();
     anim.explodeX = rect.left + (rect.width / 2) - 100; anim.explodeY = rect.top + (rect.height / 2) - 100;
     divRun.style.display = 'none'; anim.accudeltaTime = 0; anim.drawExplodeRun = true;
+    
+    // CORRECTION AUDIO ASYNCHRONE : On décale l'explosion d'un micro-instant
+    if (!gameState.isMuted) {
+      setTimeout(() => { playExplosionSound(); }, 1);
+    }
   }
 });    
 
@@ -778,7 +896,6 @@ window.addEventListener("keydown", (e) => { if (gameState.status === 'gameOver' 
 // ______________________________________________________________________
 function update() {
   if (gameState.status === 'gameOver') return;
-  // Sécurité Pause : On gèle immédiatement les calculs physiques si le jeu est suspendu
   if (gameState.isPaused) return;
 
   // Déplacement horizontal du joueur (Clavier PC ou Tactile Smartphone)
@@ -788,11 +905,10 @@ function update() {
     
     // Logique d'injection d'un projectile laser joueur
     if (inputs.keySpace && (performance.now() - lastHeroFireTime > coolDownHeroFireTime)) {
-      // Calcule le centre exact du vaisseau pour aligner l'apparition du tir
       gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 21), hero.y - 35)); 
       lastHeroFireTime = performance.now();
       
-      // INTÉGRATION BRUITAGE : On joue le son "Pew !" natif à chaque tir créé
+      // On joue le son "Pew !" natif à chaque tir créé
       playLaserSound(); 
     }
   }
@@ -805,7 +921,6 @@ function update() {
   // Maintien actif et gestion de la flotte d'ennemis
   if (gameState.status === 'start') {
     while (gameState.enemies.length < 10) {
-      // Choix de colonne avec dérive aléatoire pour bien occuper le milieu de l'écran
       let spawnX = gameState.deletedEnemiesPosX.length > 0 ? gameState.deletedEnemiesPosX.shift() : getRandom(50, canvas.width - 50);
       spawnX = spawnX + getRandom(-80, 80);
       if (spawnX < gameState.enemyWidth) spawnX = gameState.enemyWidth;
@@ -813,9 +928,7 @@ function update() {
       gameState.enemies.push(new Enemy(spawnX, getRandom(-800, -100)));
     }
     
-    // Mise à jour de l'IA de chaque ennemi
     gameState.enemies.forEach(en => en.update(hero.x, hero.isExploding, hero.isProtected));
-    // Détection géométrique des impacts (collisions.js)
     checkCollisions(hero, () => { hero.isExploding = true; gameState.playerHp--; }); 
   }
 }
@@ -824,22 +937,21 @@ function update() {
 // 3. LOGIQUE GRAPHISME DE RENDU (DRAW)
 // ______________________________________________________________________
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Nettoie l'écran pour la nouvelle frame
-  drawStars(); // Dessin des étoiles de fond
+  ctx.clearRect(0, 0, canvas.width, canvas.height); 
+  drawStars(); 
 
-  if (anim.drawExplodeRun) drawBoutonExplosion(anim); // Sprite de destruction du bouton d'accueil
+  if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
   if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) drawEnemiesAndTheirLasers(); 
 
-  // Rendu graphique des lasers joueur (Taille adaptative selon PC ou Mobile)
   let lW = window.innerWidth >= 1024 ? 30 : 21;
   let lH = window.innerWidth >= 1024 ? 50 : 36;
   gameState.arrayLaser.forEach(l => ctx.drawImage(assets.userLaser, 300, 25, 60, 110, l.x, l.y, lW, lH)); 
 
-  drawPlayerAndShield(hero, anim); // Rendu du vaisseau incliné, du bouclier ou de sa destruction
+  drawPlayerAndShield(hero, anim); 
   
-  drawUI();          // Rendu des textes d'interface (ui.js)
-  drawGameOver();    // Rendu de l'écran Game Over (ui.js)
-  drawPauseScreen(); // Rendu de l'écran orange de Pause (ui.js)
+  drawUI();          
+  drawGameOver();    
+  drawPauseScreen(); 
 }
 
 // ______________________________________________________________________
@@ -848,7 +960,6 @@ function draw() {
 function gameLoop(hrt) { 
   if (!hrt) hrt = performance.now();
   
-  // Gestion anti-saut du Delta Time si la pause est enclenchée
   if (gameState.isPaused) { 
     gameState.dt = 0; 
     gameState.lastTime = hrt; 
@@ -857,7 +968,7 @@ function gameLoop(hrt) {
     gameState.lastTime = hrt; 
   }
 
-  // Écran d'accueil : détruit le bouton START si le joueur lui tire dessus
+  // Écran d'accueil : détruit le bouton START si le joueur lui tire dessus avec un laser
   if (gameState.status === 'notYetStarted') {
     const divRunPosCurrent = divRun.getBoundingClientRect();
     for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) {
@@ -865,12 +976,24 @@ function gameLoop(hrt) {
       if ((l.y < divRunPosCurrent.bottom) && (l.x > divRunPosCurrent.left) && (l.x < divRunPosCurrent.right)) {
         anim.explodeX = divRunPosCurrent.left + (divRunPosCurrent.width / 2) - 100;
         anim.explodeY = divRunPosCurrent.top + (divRunPosCurrent.height / 2) - 100;
-        divRun.style.display = 'none'; gameState.status = 'start'; gameState.arrayLaser.splice(i, 1); anim.accudeltaTime = 0; anim.drawExplodeRun = true;
+        
+        // CORRECTION AUDIO ASYNCHRONE PARFAITE : On utilise un setTimeout de 1 milliseconde
+        // pour laisser au navigateur le temps matériel d'enregistrer l'autorisation du clic souris
+        // avant d'appeler l'onde de choc de l'explosion. Cela contourne le blocage à 100% !
+        if (!gameState.isMuted) {
+          setTimeout(() => { playExplosionSound(); }, 1);
+        }
+
+        divRun.style.display = 'none'; 
+        gameState.status = 'start'; 
+        gameState.arrayLaser.splice(i, 1); 
+        anim.accudeltaTime = 0; 
+        anim.drawExplodeRun = true;
       }
     }
   }
 
-  update(); draw(); window.requestAnimationFrame(gameLoop); // Boucle infinie fluide
+  update(); draw(); window.requestAnimationFrame(gameLoop); 
 }
-window.requestAnimationFrame(gameLoop); // Lancement initial du cycle
+window.requestAnimationFrame(gameLoop);
 
