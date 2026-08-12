@@ -74,24 +74,6 @@ function getRandom(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-let stars = [];
-
-function initStars(count = 100) {
-  stars = [];
-  for (let i = 0; i < count; i++) {
-    stars.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height
-    });
-  }
-}
-
-function drawStars() {
-  ctx.fillStyle = "white";
-  stars.forEach(s => ctx.fillRect(s.x, s.y, 1, 1));
-}
-
-// --- ÉTAT DES ENTRÉES PHYSIQUES PARTAGÉES ---
 const inputs = {
   keyLeft: false,
   keyRight: false,
@@ -101,7 +83,55 @@ const inputs = {
 let touchLeftId = null;
 let touchRightId = null;
 
+// ======================================================================
+// FONCTION DE MISE À JOUR VISUELLE DU BOUTON HTML DE SON
+// ======================================================================
+function updateSoundButtonUI() {
+  const soundDiv = document.getElementById("div_sound");
+  const soundText = document.getElementById("sound_text");
+  if (!soundDiv || !soundText) return;
+
+  let isTactile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+  if (gameState.isMuted) {
+    soundDiv.style.color = "#ff3333"; // Rouge si le son est désactivé
+    if (window.innerWidth >= 1024) {
+      // AJUSTEMENT TEXTE PC : Ajout de la mention de la souris "or Click Mouse"
+      soundText.innerText = isTactile ? "🔇 Press M, Touch or Click to turn SOUND ON" : "🔇 Press M or Click Mouse to turn SOUND ON";
+    } else {
+      soundText.innerText = "🔇 Touch to turn SOUND ON";
+    }
+  } else {
+    soundDiv.style.color = "#33ff33"; // Vert brillant si le son est activé
+    if (window.innerWidth >= 1024) {
+      // AJUSTEMENT TEXTE PC : Ajout de la mention de la souris "or Click Mouse"
+      soundText.innerText = isTactile ? "🔊 Press M, Touch or Click to MUTE" : "🔊 Press M or Click Mouse to MUTE";
+    } else {
+      soundText.innerText = "🔊 Touch to MUTE";
+    }
+  }
+}
+
 function initControls() {
+  // Initialise l'état visuel du bouton de son au démarrage
+  updateSoundButtonUI();
+
+  // ÉCOUTEUR HTML DÉDIÉ AUDIO : Intercepte le clic direct sur le bouton de son
+  const soundDiv = document.getElementById("div_sound");
+  if (soundDiv) {
+    soundDiv.addEventListener("click", (e) => {
+      e.stopPropagation(); // Évite que le clic ne traverse vers le Canvas en dessous
+      gameState.isMuted = !gameState.isMuted;
+      
+      // Force le déverrouillage de la puce audio (PC et Smartphones)
+      if (typeof initAudioContext === "function") {
+        initAudioContext();
+      }
+      // Re-stylise immédiatement le bouton
+      updateSoundButtonUI();
+    });
+  }
+
   // ======================================================================
   // A. INTERCEPTION DES COMMANDES CLAVIER (PC)
   // ======================================================================
@@ -113,6 +143,7 @@ function initControls() {
     }
     if (e.key === "m" || e.key === "M") {
       gameState.isMuted = !gameState.isMuted;
+      updateSoundButtonUI(); // Synchronise le bouton HTML
     }
     if (e.key == " ") inputs.keySpace = true;
     if (e.key == "ArrowRight") inputs.keyRight = true; 
@@ -126,90 +157,38 @@ function initControls() {
   });
 
   // ======================================================================
-  // B. INTERCEPTION DES COMMANDES TACTILES (SMARTPHONE - ENFONCEMENT)
+  // B. INTERCEPTION DES COMMANDES DE PILOTAGE TACTILES (SMARTPHONE)
   // ======================================================================
-  window.addEventListener("touchstart", e => {
-    if (e.target.id === "canvas") { e.preventDefault(); }
+  window.addEventListener("pointerdown", e => {
+    if (e.target.id === "div_sound" || e.target.id === "sound_text") return;
 
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      let touch = e.changedTouches[i];
-      
-      // Hitbox de la zone haute (15% de la hauteur de l'écran)
-      let pauseZoneHeight = window.innerHeight * 0.15;
-
-      if (touch.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused || gameState.status === 'notYetStarted')) {
-        let screenCenter = window.innerWidth / 2;
-        // Hitbox du couloir central du son (240px de large au total)
-        let isClickInAudioCenter = (touch.clientX > screenCenter - 120) && (touch.clientX < screenCenter + 120);
-
-        if (isClickInAudioCenter) {
-          // ANCIEN BUG IPHONE CORRIGÉ : On ne touche pas au touchstart pour le son !
-          // On laisse l'écouteur de "click" universel (plus bas) s'en charger proprement.
-          return;
-        } else if (gameState.status === 'start' || gameState.isPaused) {
-          // Si on tape sur les côtés de la zone haute, c'est la pause
-          gameState.isPaused = !gameState.isPaused;
-          return;
-        }
-      }
-
-      // --- COMMANDES DE PILOTAGE ET TIR ---
-      if (gameState.status === 'start' || gameState.status === 'notYetStarted') {
-        inputs.keySpace = true;
-      }
-
-      // Division gauche / droite de l'écran pour les mouvements
-      if (touch.clientX < window.innerWidth / 2) {
-        inputs.keyLeft = true; 
-        touchLeftId = touch.identifier; 
-      } else {
-        inputs.keyRight = true; 
-        touchRightId = touch.identifier; 
-      }
+    let pauseZoneHeight = window.innerHeight * 0.15;
+    if (e.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused)) {
+      gameState.isPaused = !gameState.isPaused;
+      return;
     }
-  }, { passive: false });
 
-  // ======================================================================
-  // C. INTERCEPTION DES RELÂCHEMENTS TACTILES (NETTOYAGE ANTI-RAFALE)
-  // ======================================================================
-  window.addEventListener("touchend", e => {
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      let touch = e.changedTouches[i];
-      
-      // Nettoyage immédiat et sécurisé des drapeaux physiques de mouvements
-      if (touch.identifier === touchLeftId) { inputs.keyLeft = false; touchLeftId = null; }
-      if (touch.identifier === touchRightId) { inputs.keyRight = false; touchRightId = null; }
+    if (gameState.status === 'start' || gameState.status === 'notYetStarted') {
+      inputs.keySpace = true; 
     }
-    // S'il n'y a plus aucun pouce posé sur l'écran, on coupe TOUJOURS le tir d'office
-    if (e.touches.length === 0) { 
-      inputs.keySpace = false; 
+
+    if (e.clientX < window.innerWidth / 2) {
+      inputs.keyLeft = true; touchLeftId = e.pointerId; 
+    } else {
+      inputs.keyRight = true; touchRightId = e.pointerId;
     }
   });
 
-  window.addEventListener("touchcancel", () => {
-    inputs.keyLeft = false; inputs.keyRight = false; inputs.keySpace = false;
-    touchLeftId = null; touchRightId = null;
+  window.addEventListener("pointerup", e => {
+    if (e.pointerId === touchLeftId) { inputs.keyLeft = false; touchLeftId = null; }
+    if (e.pointerId === touchRightId) { inputs.keyRight = false; touchRightId = null; }
+    inputs.keySpace = false;
   });
 
-  // ======================================================================
-  // D. SOLUTION ABSOLUE AUDIO IPHONE : L'ÉCOUTEUR DE CLIC NATIF
-  // ======================================================================
-  // Apple valide à 100% le déverrouillage audio si et seulement si la fonction
-  // est déclenchée par un "click" physique de souris ou de doigt émulé.
-  window.addEventListener("click", e => {
-    let screenCenter = window.innerWidth / 2;
-    let isClickInAudioX = (e.clientX > screenCenter - 120) && (e.clientX < screenCenter + 120);
-    // Zone verticale confortable entre Y=30px et Y=130px
-    let isClickInAudioY = (e.clientY > 30) && (e.clientY < 130);
-
-    if (isClickInAudioX && isClickInAudioY && (gameState.status === 'start' || gameState.status === 'notYetStarted')) {
-      gameState.isMuted = !gameState.isMuted; // Inverse le mode muet
-      
-      // Appel de la fonction présente dans sound.js pour ouvrir les vannes de l'iPhone !
-      if (typeof initAudioContext === "function") {
-        initAudioContext();
-      }
-    }
+  window.addEventListener("pointercancel", e => {
+    if (e.pointerId === touchLeftId) { inputs.keyLeft = false; touchLeftId = null; }
+    if (e.pointerId === touchRightId) { inputs.keyRight = false; touchRightId = null; }
+    inputs.keySpace = false;
   });
 }
 
@@ -373,6 +352,23 @@ function playPlayerExplosionSound() {
   bassOsc.start(now); bassOsc.stop(now + duration);
 }
 
+let stars = [];
+
+function initStars(count = 100) {
+  stars = [];
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height
+    });
+  }
+}
+
+function drawStars() {
+  ctx.fillStyle = "white";
+  stars.forEach(s => ctx.fillRect(s.x, s.y, 1, 1));
+}
+
 class Laser {
   constructor(x, y) {
     this.x = x;
@@ -530,86 +526,65 @@ function checkCollisions(hero, onHeroHit) {
 }
 
 // ======================================================================
-// 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE, PAUSE, VIE ET AUDIO)
+// 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE ET VIE)
 // ======================================================================
 function drawUI() {
-  // --- A. LES TEXTES DE COMBAT (SCORE ET VIE - LIGNE 1 : Y=40) ---
-  if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.status === 'paused') {
-    ctx.save(); 
-    ctx.fillStyle = "#ffffff"; 
-    ctx.font = "bold 20px 'Courier New', monospace"; 
-    
-    ctx.textAlign = "left"; 
-    ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
-    
-    ctx.textAlign = "right"; 
-    const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
-    ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
-    ctx.restore();
+  const soundDiv = document.getElementById("div_sound");
+  
+  // GESTION DYNAMIQUE DU POSITIONNEMENT DU BOUTON DE SON HTML
+  if (soundDiv) {
+    if (gameState.status === 'gameOver' || gameState.isPaused) {
+      soundDiv.style.display = 'none'; // Cache le bouton pendant la pause ou le Game Over
+    } else {
+      soundDiv.style.display = 'flex'; // Visible à l'accueil et en jeu
+      
+      // --- LOGIQUE DE CENTRAGE RESPONSIVE CORRIGÉE ---
+      if (window.innerWidth >= 1024 && gameState.status === 'start') {
+        // En pleine partie sur PC : On décale le bouton à droite pour laisser le milieu libre
+        soundDiv.style.left = "calc(50% + 180px)";
+        soundDiv.style.transform = "none";
+      } else {
+        // À l'accueil (PC/Mobile) OU sur Smartphone en jeu : Centrage absolu parfait !
+        soundDiv.style.left = "50%";
+        soundDiv.style.transform = "translateX(-50%)";
+      }
+    }
   }
 
-  // --- B. INDICATEURS CENTRAUX ADAPTATIFS ---
-  if (gameState.status === 'notYetStarted' || (!gameState.isPaused && gameState.status === 'start')) {
+  // On n'affiche le score et les PV que si la partie a commencé, est en pause ou en Game Over
+  if (gameState.status !== 'start' && gameState.status !== 'gameOver' && gameState.status !== 'paused') return;
+
+  ctx.save(); 
+  ctx.fillStyle = "#ffffff"; 
+  ctx.font = "bold 20px 'Courier New', monospace"; 
+  
+  // --- A. SCORE (HAUT À GAUCHE) ---
+  ctx.textAlign = "left"; 
+  ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
+  
+  // --- B. POINTS DE VIE / HP (HAUT À DROITE) ---
+  ctx.textAlign = "right"; 
+  const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
+  ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
+
+  // --- C. INDICATEUR DE PAUSE CENTRALE (SANS CONFLIT AUDIO) ---
+  if (!gameState.isPaused && gameState.status === 'start') {
     ctx.save(); 
     ctx.textAlign = "center"; 
     ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
     ctx.font = "14px 'Courier New', monospace"; 
 
-    // Détection si l'appareil possède un écran tactile actif
-    let isTactile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    
-    // Altitudes par défaut pour Mobile / Tablette
-    let textY = 70;  // Ligne 2 : Aide à la pause
-    let audioY = 105; // CORRECTION ERGONOMIE : Descendu en Ligne 3 pour aérer l'écran mobile !
-
-    // --- RENDU DU TEXTE D'AIDE À LA PAUSE (UNIQUEMENT SI LE JEU TOURNE) ---
-    if (gameState.status === 'start') {
-      if (window.innerWidth >= 1024) {
-        textY = 40; audioY = 40; // Sur grand écran PC, tout reste aligné sur la Ligne 1
-        if (isTactile) {
-          ctx.fillText("Press P to PAUSE", canvas.width / 2 - 120, textY);
-        } else {
-          ctx.fillText("Press P to PAUSE", canvas.width / 2, textY);
-        }
-      } else {
-        ctx.fillText("Touch here to PAUSE", canvas.width / 2, textY);
-      }
-    } else if (gameState.status === 'notYetStarted' && window.innerWidth >= 1024) {
-      audioY = 40; // Calage PC à l'écran d'accueil
-    }
-    
-    // --- RENDU DE LA CONSIGNE AUDIO ADAPTATIVE DÉTAILLÉE ---
-    ctx.font = "15px 'Courier New', monospace";
-    let soundIcon = "";
-    
     if (window.innerWidth >= 1024) {
-      // CONFIGURATION GRAND ÉCRAN (PC)
-      if (isTactile) {
-        // Grand écran PC + Option tactile active
-        soundIcon = gameState.isMuted ? "🔇 Press M or Touch to turn SOUND ON" : "🔊 Press M or Touch to MUTE";
-      } else {
-        // Grand écran PC de bureau standard
-        soundIcon = gameState.isMuted ? "🔇 Press M to turn SOUND ON" : "🔊 Press M to MUTE";
-      }
+      // Sur PC, l'aide à la pause s'affiche pile au milieu
+      ctx.fillText("Press P to PAUSE", canvas.width / 2, 40);
     } else {
-      // CONFIGURATION MOBILE & TABLETTE (Le message par défaut est toujours tactile court)
-      soundIcon = gameState.isMuted ? "🔇 Touch to turn SOUND ON" : "🔊 Touch to MUTE";
+      // Sur mobile, l'aide à la pause reste centrée sur la ligne 2 (Y=70)
+      ctx.fillText("Touch here to PAUSE", canvas.width / 2, 70);
     }
-
-    // Choix de la couleur : rouge si éteint, vert brillant si allumé
-    ctx.fillStyle = gameState.isMuted ? "#ff3333" : "#33ff33";
-    
-    // Positionnement horizontal
-    let audioX = canvas.width / 2;
-    if (window.innerWidth >= 1024 && gameState.status === 'start') {
-      // Sur PC en jeu, on décale proprement le grand message sur la droite de la ligne 1
-      ctx.textAlign = "left";
-      audioX = canvas.width / 2 + 60; 
-    }
-    
-    ctx.fillText(soundIcon, audioX, audioY);
     ctx.restore(); 
   }
+  
+  ctx.restore(); 
 }
 
 // ======================================================================
@@ -993,6 +968,13 @@ function gameLoop(hrt) {
     gameState.lastTime = hrt; 
   }
 
+  // SECURITY FIX POUR LE TEXTE SUR PC : 
+  // On force le rafraîchissement permanent du texte du bouton de son HTML 
+  // à chaque frame pour être sûr à 100% qu'il ne reste jamais vide au démarrage.
+  if (typeof updateSoundButtonUI === "function") {
+    updateSoundButtonUI();
+  }
+
   // Écran d'accueil : détruit le bouton START si le joueur lui tire dessus avec un laser
   if (gameState.status === 'notYetStarted') {
     const divRunPosCurrent = divRun.getBoundingClientRect();
@@ -1002,9 +984,6 @@ function gameLoop(hrt) {
         anim.explodeX = divRunPosCurrent.left + (divRunPosCurrent.width / 2) - 100;
         anim.explodeY = divRunPosCurrent.top + (divRunPosCurrent.height / 2) - 100;
         
-        // CORRECTION AUDIO ASYNCHRONE PARFAITE : On utilise un setTimeout de 1 milliseconde
-        // pour laisser au navigateur le temps matériel d'enregistrer l'autorisation du clic souris
-        // avant d'appeler l'onde de choc de l'explosion. Cela contourne le blocage à 100% !
         if (!gameState.isMuted) {
           setTimeout(() => { playExplosionSound(); }, 1);
         }

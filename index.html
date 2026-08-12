@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"> <!-- 1. Passage en Anglais -->
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -12,12 +12,24 @@
   <div id="gameContainer">
     <canvas id="canvas"></canvas>
 
-    <!-- 2. Remplacement de RUN par START -->
+    <!-- Le bouton de son HTML placé au premier plan pour l'iPhone et le PC -->
+    <div id="div_sound" class="btn_sound">
+      <span id="sound_text">🔇 SOUND: OFF</span>
+    </div>
+
+    <!-- Le bouton de démarrage -->
     <div id="div_run" class="btn_run">
       <span id="run">START</span>
     </div>
   </div>
 
+  <!-- ======================================================================
+       ORDRE DES SCRIPTS CORRIGÉ POUR LE LOCAL (MOBILE-FIRST & CHRONOLOGIQUE)
+       ====================================================================== -->
+  
+  <!-- CORRECTION CRITIQUE : Les contrôles et le son passent en premier ! -->
+  
+  <!-- Le reste du moteur de jeu charge ensuite tranquillement -->
 
 <script src="assets/js/game.js"></script></body>
 </html>

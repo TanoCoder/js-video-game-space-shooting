@@ -1,18 +1,15 @@
 /* ======================================================================
    1. STYLE PAR DÉFAUT : SMARTPHONE (APPROCHE MOBILE-FIRST)
    ====================================================================== */
-
-/* Réinitialisation complète des marges pour éviter les barres de défilement */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; /* Bloque tout défilement parasite pendant les combats */
-  background-color: black; /* Fond noir absolu pour l'ambiance spatiale */
+  overflow: hidden;
+  background-color: black;
 }
 
-/* Configuration de la zone de dessin du jeu */
 canvas {
   position: absolute;
   top: 0;
@@ -21,83 +18,94 @@ canvas {
   height: 100%;
   background: black;
   display: block;
-  
-  /* CRUCIAL POUR SMARTPHONE : Désactive les zooms automatiques du navigateur 
-     lorsque le joueur tapote rapidement l'écran avec ses deux pouces */
   touch-action: none; 
-
-  /* CORRECTION MOBILE : Augmente la luminosité de 20% et ravive les couleurs de 30%.
-     Cela compense le rendu trop sombre des dalles d'écrans de téléphones */
   filter: brightness(1.2) saturate(1.3);
 }
 
-/* Conteneur principal qui englobe le Canvas et le bouton HTML */
 #gameContainer {
   position: relative;
   width: 100%;
   height: 100%;
 }
 
-/* Style du bouton d'accueil RUN adapté pour le pouce sur Mobile */
+/* NOUVEAUTÉ : Le bouton de son HTML large, aéré et immanquable pour l'iPhone 8 */
+.btn_sound {
+  position: absolute;
+  top: 95px; /* Aligné sur la ligne 3 comme voulu */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px; /* Grande largeur pour le pouce */
+  height: 45px;
+  background-color: rgba(0, 0, 0, 0.6); /* Fond sombre translucide très élégant */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 14px;
+  z-index: 20; /* Priorité absolue : passe DEVANT le bouton START d'accueil */
+  color: #ff3333;
+  cursor: pointer;
+}
+
+/* Bouton START d'accueil */
 .btn_run {
   position: absolute;
   top: 50%;
   left: 50%;
-  /* Centre parfaitement le bouton au milieu horizontal et vertical de l'écran */
   transform: translate(-50%, -50%); 
-  
-  width: 60%; /* Prend 60% de la largeur du téléphone pour être facile à viser */
-  max-width: 240px; /* Sécurité pour éviter qu'il devienne trop large sur tablette */
-  height: 70px; /* Hauteur généreuse pour un confort tactile optimal */
-  
+  width: 60%; 
+  max-width: 240px; 
+  height: 70px; 
   border: 2px solid black;
-  border-radius: 12px; /* Coins légèrement plus arrondis sur mobile */
+  border-radius: 12px;
   background-color: orange;
   color: black;
-  
-  /* Flexbox pour aligner et centrer parfaitement le texte "RUN" à l'intérieur */
   display: flex;
   justify-content: center;
   align-items: center;
-  
   font-family: 'Courier New', monospace;
   font-weight: bold;
-  z-index: 10; /* Force le bouton HTML à rester au-dessus du Canvas au départ */
+  z-index: 10;
 }
 
-/* Style du texte à l'intérieur du bouton d'accueil */
 #run {
-  font-size: 1.8rem; /* Écrit en gros pour une lecture immédiate sur smartphone */
+  font-size: 1.8rem;
   color: red;
 }
-
 
 /* ======================================================================
    2. EXCEPTION POUR LES GRANDS ÉCRANS (PC / BREAKPOINT >= 1024px)
    ====================================================================== */
 @media (min-width: 1024px) {
-  
   canvas {
-    /* Sur un moniteur PC, le rétroéclairage est déjà parfait. 
-       On désactive le filtre pour retrouver les couleurs d'origine des images. */
     filter: brightness(1.0) saturate(1.0);
   }
 
-  /* Ajustement du bouton RUN pour le pointeur précis de la souris */
+  .btn_sound {
+    top: 28px; /* Remonte sur la ligne 1 sur PC */
+    left: calc(50% + 180px); /* Se décale sur la droite pour laisser le centre libre */
+    width: 220px;
+    height: 30px;
+    background-color: transparent;
+    border: none;
+    font-size: 15px;
+  }
+
   .btn_run {
-    width: 160px; /* Taille fixe classique et élégante sur ordinateur */
+    width: 160px;
     height: 60px;
     border-radius: 10px;
   }
 
   #run {
-    font-size: 1.5rem; /* Taille de police standard pour PC */
+    font-size: 1.5rem;
   }
 
-  /* Effet visuel au survol : actif uniquement sur PC grâce à la souris */
   .btn_run:hover {
-    cursor: pointer;
-    background-color: #ffb300; /* Orange légèrement plus foncé au survol */
+    background-color: #ffb300;
   }
 }
 
