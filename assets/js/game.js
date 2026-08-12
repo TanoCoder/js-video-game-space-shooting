@@ -279,45 +279,50 @@ function checkCollisions(hero, onHeroHit) {
 // 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE, PAUSE ET VIE)
 // ======================================================================
 function drawUI() {
-  // On n'affiche l'interface que si la partie est active, en pause ou en Game Over
   if (gameState.status !== 'start' && gameState.status !== 'gameOver' && gameState.status !== 'paused') return;
 
-  ctx.save(); // Sécurise les réglages graphiques du Canvas
-  ctx.fillStyle = "#ffffff"; // Choix de la couleur blanche opaque pour le Score et les HP
-  ctx.font = "bold 20px 'Courier New', monospace"; // Style de police rétro arcade
+  ctx.save(); 
+  ctx.fillStyle = "#ffffff"; 
+  ctx.font = "bold 20px 'Courier New', monospace"; 
   
-  // --- A. AFFICHAGE DU SCORE (HAUT À GAUCHE - LIGNE 1) ---
-  ctx.textAlign = "left"; // Alignement calé vers la gauche
+  // --- A. SCORE (HAUT À GAUCHE - LIGNE 1) ---
+  ctx.textAlign = "left"; 
   ctx.fillText(`SCORE: ${String(gameState.score).padStart(6, '0')}`, 20, 40);
   
-  // --- B. AFFICHAGE DES POINTS DE VIE / HP (HAUT À DROITE - LIGNE 1) ---
-  ctx.textAlign = "right"; // Alignement calé vers la droite
+  // --- B. POINTS DE VIE / HP (HAUT À DROITE - LIGNE 1) ---
+  ctx.textAlign = "right"; 
   const hearts = "❤️".repeat(gameState.playerHp) + "🖤".repeat(gameState.maxHp - gameState.playerHp);
   ctx.fillText(`HP: ${hearts}`, canvas.width - 20, 40); 
 
   // --- C. INDICATEUR DE PAUSE ADAPTATIF ET RESPONSIVE ---
-  // On n'affiche l'indicateur d'aide que si le jeu est en cours et PAS déjà en pause
   if (!gameState.isPaused && gameState.status === 'start') {
-    ctx.save(); // Sauvegarde locale pour modifier la police et la couleur
-    ctx.textAlign = "center"; // Alignement parfaitement centré au milieu de l'écran
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; // Lumineux à 90% d'opacité
-    ctx.font = "14px 'Courier New', monospace"; // Police plus petite pour le design
+    ctx.save(); 
+    ctx.textAlign = "center"; 
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; 
+    ctx.font = "14px 'Courier New', monospace"; 
 
-    // LOGIQUE MOBILE-FIRST (DESSIN ET POSITIONNEMENT) :
+    // Détection si l'appareil actuel possède un écran tactile actif
+    let isTactile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+    // Ajustement de la consigne et de la ligne (Y) selon le format et la technologie de l'écran
     if (window.innerWidth >= 1024) {
-      // EXCEPTION PC : Écran large. On affiche "Press P to PAUSE" 
-      // et on le positionne sur la LIGNE 1 (Y = 40) car il y a de la place !
-      ctx.fillText("Press P to PAUSE", canvas.width / 2, 40);
+      // ÉCRAN GÉANT (PC) : Positionné sur la ligne 1 (Y = 40)
+      if (isTactile) {
+        // Grand écran PC + Option tactile détectée
+        ctx.fillText("Press P or touch top to PAUSE", canvas.width / 2, 40);
+      } else {
+        // Grand écran PC classique (Non tactile)
+        ctx.fillText("Press P to PAUSE", canvas.width / 2, 40);
+      }
     } else {
-      // PAR DÉFAUT MOBILE/TABLETTE : Écran étroit. On affiche "Touch here to PAUSE"
-      // et on le descend sur la LIGNE 2 (Y = 70) pour éviter que tout se chevauche.
+      // PETIT ÉCRAN (Smartphone / Tablette) : Descendu sur la ligne 2 (Y = 70)
       ctx.fillText("Touch here to PAUSE", canvas.width / 2, 70);
     }
     
-    ctx.restore(); // Restaure l'état pour la suite du Canvas
+    ctx.restore(); 
   }
   
-  ctx.restore(); // Restaure l'état d'origine du Canvas
+  ctx.restore(); 
 }
 
 // ======================================================================
@@ -346,7 +351,7 @@ function drawGameOver() {
 }
 
 // ======================================================================
-// 3. RENDU DE L'ÉCRAN DE PAUSE
+// 3. RENDU DE L'ÉCRAN DE PAUSE SECURISE ET INTELLIGENT
 // ======================================================================
 function drawPauseScreen() {
   if (!gameState.isPaused) return;
@@ -362,7 +367,22 @@ function drawPauseScreen() {
   
   ctx.fillStyle = "#ffffff";
   ctx.font = "16px 'Courier New', monospace";
-  ctx.fillText("Press P or touch top of screen to resume", canvas.width / 2, canvas.height / 2 + 40);
+  
+  // --- CALCUL DU MESSAGE DE REPRISE UNIVERSEL ---
+  let isTactile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  let resumeMessage = "Touch top of screen to resume"; // Message Smartphone / Tablette par défaut
+  
+  if (window.innerWidth >= 1024) {
+    if (isTactile) {
+      // Grand écran PC mais l'utilisateur a l'option tactile active
+      resumeMessage = "Press P or touch top of screen to resume";
+    } else {
+      // Grand écran PC standard de bureau à la souris/clavier
+      resumeMessage = "Press P to resume";
+    }
+  }
+  
+  ctx.fillText(resumeMessage, canvas.width / 2, canvas.height / 2 + 40);
   ctx.restore();
 }
 
