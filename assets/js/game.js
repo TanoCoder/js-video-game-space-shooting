@@ -91,6 +91,7 @@ function drawStars() {
   stars.forEach(s => ctx.fillRect(s.x, s.y, 1, 1));
 }
 
+// --- ÉTAT DES ENTRÉES PARTAGÉ AVEC LE MOTEUR ---
 const inputs = {
   keyLeft: false,
   keyRight: false,
@@ -110,11 +111,9 @@ function initControls() {
         gameState.isPaused = !gameState.isPaused;
       }
     }
-    
     if (e.key === "m" || e.key === "M") {
       gameState.isMuted = !gameState.isMuted;
     }
-    
     if (e.key == " ") inputs.keySpace = true;
     if (e.key == "ArrowRight") inputs.keyRight = true; 
     if (e.key == "ArrowLeft") inputs.keyLeft = true;
@@ -127,7 +126,7 @@ function initControls() {
   });
 
   // ======================================================================
-  // B. INTERCEPTION DES COMMANDES TACTILES (SMARTPHONE / TABLETTE)
+  // B. INTERCEPTION DES COMMANDES TACTILES (SMARTPHONE - ENFONCEMENT)
   // ======================================================================
   window.addEventListener("touchstart", e => {
     if (e.target.id === "canvas") { e.preventDefault(); }
@@ -135,32 +134,28 @@ function initControls() {
     for (let i = 0; i < e.changedTouches.length; i++) {
       let touch = e.changedTouches[i];
       
-      // Hitbox confortable : prend les 15% supérieurs de la hauteur totale de l'écran
+      // Zone haute générale pour la pause (15% de l'écran)
       let pauseZoneHeight = window.innerHeight * 0.15;
 
       if (touch.clientY < pauseZoneHeight && (gameState.status === 'start' || gameState.isPaused || gameState.status === 'notYetStarted')) {
-        
-        // CORRECTION ERGONOMIE : Calcul d'un couloir central très large (120 pixels de tolérance)
-        // pour que le pouce ne rate jamais le bouton audio, peu importe l'écran.
         let screenCenter = window.innerWidth / 2;
+        // Hitbox latérale du son (240px de large au total)
         let isClickInAudioCenter = (touch.clientX > screenCenter - 120) && (touch.clientX < screenCenter + 120);
 
         if (isClickInAudioCenter) {
-          // Si le joueur vise le centre du couloir haut, on commute uniquement le son (Mute / Unmute)
-          gameState.isMuted = !gameState.isMuted;
+          // NOUVEAUTÉ IPHONE : On ne fait plus rien au touchstart pour le son !
+          // On laisse le touchend s'en charger pour valider la sécurité iOS.
+          return;
         } else if (gameState.status === 'start' || gameState.isPaused) {
-          // Si le joueur vise les côtés gauches ou droits du bandeau haut, on enclenche la pause
           gameState.isPaused = !gameState.isPaused;
         }
-        return; // Interrompt pour éviter de déplacer le vaisseau joueur
+        return; 
       }
 
-      // Gestion de l'armement automatique du tir
       if (gameState.status === 'start' || gameState.status === 'notYetStarted') {
         inputs.keySpace = true;
       }
 
-      // Mouvements horizontaux standards (Écran divisé en deux sections)
       if (touch.clientX < window.innerWidth / 2) {
         inputs.keyLeft = true; touchLeftId = touch.identifier; 
       } else {
@@ -169,9 +164,27 @@ function initControls() {
     }
   }, { passive: false });
 
+  // ======================================================================
+  // C. INTERCEPTION DES RELÂCHEMENTS TACTILES (SMARTPHONE - SOLUTION IPHONE)
+  // ======================================================================
   window.addEventListener("touchend", e => {
     for (let i = 0; i < e.changedTouches.length; i++) {
       let touch = e.changedTouches[i];
+      
+      // --- CORRECTION HITBOX GÉANTE AUDIO POUR IPHONE 8 ---
+      // On crée un grand rectangle virtuel de 120px de haut au milieu pour le bouton de son
+      let screenCenter = window.innerWidth / 2;
+      let isTouchInAudioX = (touch.clientX > screenCenter - 120) && (touch.clientX < screenCenter + 120);
+      let isTouchInAudioY = (touch.clientY > 40) && (touch.clientY < 140); // 100 pixels de haut réactifs !
+
+      if (isTouchInAudioX && isTouchInAudioY && (gameState.status === 'start' || gameState.status === 'notYetStarted')) {
+        // Déclenchement au relâchement exigé par Safari iOS
+        gameState.isMuted = !gameState.isMuted;
+        initAudioContext(); // Force l'éveil des haut-parleurs de l'iPhone !
+        return;
+      }
+
+      // Nettoyage classique des pouces pour le pilotage
       if (touch.identifier === touchLeftId) { inputs.keyLeft = false; touchLeftId = null; }
       if (touch.identifier === touchRightId) { inputs.keyRight = false; touchRightId = null; }
     }
@@ -185,23 +198,25 @@ function initControls() {
 }
 
 // ======================================================================
-// MODULE AUDIO RETRO (MIXAGE CORRIGÉ : EXPLOSIONS BAISSÉES D'UN CRAN)
+// MODULE AUDIO RETRO (SYNTHÉTISEUR DE SOUND CLIPS ADAPTÉ SAFARI/iOS)
 // ======================================================================
 
 let audioCtx = null;
 
-// --- DÉVERROUILLAGE POUR SMARTPHONE ---
+// --- DÉVERROUILLAGE UNIQUE POUR SAFARI ET SMARTPHONES ---
 function initAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
+  // Réactive de force le flux si iOS l'a mis en sourdine
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
 }
 
-// Déverrouillage automatique au tout premier tapotement mobile
-['click', 'touchstart', 'keydown'].forEach(eventName => {
+// CORRECTION SAFARI IPHONE : iOS refuse le touchstart. 
+// On écoute le 'touchend' et le 'click' pour forcer l'iPhone 8 à ouvrir ses haut-parleurs.
+['click', 'touchend', 'keydown'].forEach(eventName => {
   window.addEventListener(eventName, () => {
     initAudioContext();
     if (audioCtx && audioCtx.state !== 'suspended') {
@@ -216,7 +231,7 @@ function initAudioContext() {
   }, { once: true });
 });
 
-// --- 1. BRUITAGE : TIR DE LASER JOUEUR ("PEW !" TRANCHANT) ---
+// --- 1. BRUITAGE : TIR DE LASER JOUEUR ("PEW !") ---
 function playLaserSound() {
   if (gameState.isMuted) return;
   initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
@@ -236,7 +251,7 @@ function playLaserSound() {
   osc.start(now); osc.stop(now + 0.12);
 }
 
-// --- 2. BRUITAGE : EXPLOSION ENNEMIE (ATTÉNUÉE D'UN CRAN) ---
+// --- 2. BRUITAGE : EXPLOSION ENNEMIE ---
 function playExplosionSound() {
   if (gameState.isMuted) return;
   initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
@@ -244,7 +259,6 @@ function playExplosionSound() {
   const now = audioCtx.currentTime;
   const duration = 0.35; 
 
-  // --- Composante 1 : Le froissement métallique (Bruit blanc) ---
   const bufferSize = audioCtx.sampleRate * duration;
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -259,13 +273,11 @@ function playExplosionSound() {
   noiseFilter.frequency.exponentialRampToValueAtTime(50, now + duration);
   
   const noiseGain = audioCtx.createGain();
-  // CORRECTION MIXAGE : Baissé de 0.45 à 0.25 pour adoucir le crépitement
   noiseGain.gain.setValueAtTime(0.25, now);
   noiseGain.gain.linearRampToValueAtTime(0, now + duration);
   
   noiseNode.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
 
-  // --- Composante 2 : L'onde de choc lourde (Onde TRIANGLE du Héros) ---
   const bassOsc = audioCtx.createOscillator();
   const bassGain = audioCtx.createGain();
   
@@ -273,7 +285,6 @@ function playExplosionSound() {
   bassOsc.frequency.setValueAtTime(100, now); 
   bassOsc.frequency.linearRampToValueAtTime(15, now + duration); 
 
-  // CORRECTION MIXAGE : Baissé de 0.65 à 0.35 pour calmer l'impact de basse
   bassGain.gain.setValueAtTime(0.35, now); 
   bassGain.gain.linearRampToValueAtTime(0, now + duration);
   
@@ -283,7 +294,7 @@ function playExplosionSound() {
   bassOsc.start(now); bassOsc.stop(now + duration);
 }
 
-// --- 3. BRUITAGE : TIR DE LASER ENNEMI ("ZAP !" ALIEN) ---
+// --- 3. BRUITAGE : TIR DE LASER ENNEMI ("ZAP !") ---
 function playEnemyLaserSound() {
   if (gameState.isMuted) return;
   initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
@@ -303,7 +314,7 @@ function playEnemyLaserSound() {
   osc.start(now); osc.stop(now + 0.1);
 }
 
-// --- 4. BRUITAGE : EXPLOSION DE LA MORT DU JOUEUR (CRASH ATTÉNUÉ ÉGALEMENT) ---
+// --- 4. BRUITAGE : EXPLOSION DU JOUEUR ---
 function playPlayerExplosionSound() {
   if (gameState.isMuted) return;
   initAudioContext(); if (!audioCtx || audioCtx.state === 'suspended') return;
@@ -325,7 +336,6 @@ function playPlayerExplosionSound() {
   noiseFilter.frequency.exponentialRampToValueAtTime(50, now + duration);
   
   const noiseGain = audioCtx.createGain();
-  // Baissé à 0.4 pour le joueur aussi
   noiseGain.gain.setValueAtTime(0.4, now);
   noiseGain.gain.linearRampToValueAtTime(0, now + duration);
   
@@ -338,7 +348,6 @@ function playPlayerExplosionSound() {
   bassOsc.frequency.setValueAtTime(90, now);
   bassOsc.frequency.linearRampToValueAtTime(10, now + duration);
 
-  // Baissé à 0.5 pour la basse joueur
   bassGain.gain.setValueAtTime(0.5, now);
   bassGain.gain.linearRampToValueAtTime(0, now + duration);
   
