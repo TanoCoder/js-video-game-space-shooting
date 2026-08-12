@@ -28,23 +28,26 @@ canvas {
   height: 100%;
 }
 
-
+/* LE BOUTON DE SON HTML : ROND, PLUS GRAND ET CONFORTABLE */
 .btn_sound {
   position: absolute;
-  top: 95px;
+  top: 95px; /* Aligné sur la ligne 3 sur mobile */
   left: 50%;
   transform: translateX(-50%);
-  width: 50px; /* Changé de 240px à 50px pour faire un joli bouton carré tactile */
-  height: 50px;
-  background-color: rgba(0, 0, 0, 0.4);
+  
+  /* CORRECTION TAILLE MOBILE : Augmenté à 70px pour une hitbox immanquable au pouce */
+  width: 70px; 
+  height: 70px;
+  
+  background-color: rgba(0, 0, 0, 0.4); 
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 50%; /* Transforme le carré en un bouton rond super moderne ! */
+  border-radius: 50%; /* Bouton rond */
   display: flex;
   justify-content: center;
   align-items: center;
   font-family: 'Courier New', monospace;
   font-weight: bold;
-  z-index: 20;
+  z-index: 20; /* Passe devant le bouton START */
   cursor: pointer;
   opacity: 0.6;
   transition: opacity 0.2s ease, background-color 0.2s ease;
@@ -86,15 +89,14 @@ canvas {
 
   .btn_sound {
     top: 28px; /* Aligné en haut sur PC */
-    width: 240px;
+    width: 600px; /* Redivient la barre large pour le texte d'une seule ligne sur PC */
     height: 30px;
     background-color: transparent;
     border: none;
+    border-radius: 0; /* Annule la forme ronde uniquement sur PC */
     font-size: 15px;
   }
 
-  /* EFFET DE SURVOL PC : Le bouton redevient totalement opaque (100%) 
-     quand la souris passe dessus, pour un effet moderne très agréable */
   .btn_sound:hover {
     opacity: 1.0;
   }
