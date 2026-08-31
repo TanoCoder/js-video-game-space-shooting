@@ -1046,6 +1046,11 @@ function update() {
       if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
     }
     
+    // Maintient la hauteur de sécurité remontée à -40 pour le confort du pouce
+    if (hero.y > window.innerHeight - gameState.playerHeight - 40) { 
+      hero.y = window.innerHeight - gameState.playerHeight - 40;     
+    }
+    
     // ======================================================================
     // CADENCE DE TIR SÉCURISÉE (Avec gestion du DOUBLE CANON)
     // ======================================================================
@@ -1174,8 +1179,9 @@ function update() {
     }
     
     gameState.enemies.forEach(en => en.update(hero.x, hero.isExploding, hero.isProtected));
-      // VERIFICATION DES IMPACTS ET PERTE DU POWER-UP À LA MORT/DÉGÂT
-      checkCollisions(hero, () => { 
+    
+    // VERIFICATION DES IMPACTS ET PERTE DU POWER-UP À LA MORT/DÉGÂT
+    checkCollisions(hero, () => { 
       hero.isExploding = true; 
       gameState.playerHp--; 
       
@@ -1184,7 +1190,7 @@ function update() {
       gameState.powerUps = [];           // Supprime les bonus en cours de descente
       gameState.lastPowerUpSpawnTime = 0; // Relancera le chrono de 5s après sa réapparition
     }); 
-  }
+  }  
 }
 
 // 3. Entités et Physique
@@ -1240,7 +1246,7 @@ const divRun = document.getElementById("div_run");
 // Création du héros calé au centre avec la hauteur de sécurité remontée (-95)
 const hero = { 
   x: window.innerWidth / 2 - (gameState.playerWidth / 2), 
-  y: window.innerHeight - 95, 
+  y: window.innerHeight - 105, 
   speed: 500, 
   isExploding: false, 
   isProtected: false 
@@ -1276,14 +1282,14 @@ window.addEventListener('DOMContentLoaded', () => {
 assets.spaceship.onload = () => { 
   max_x = (canvas.width - gameState.playerWidth); 
   hero.x = ((canvas.width - gameState.playerWidth) / 2); 
-  hero.y = (canvas.height - gameState.playerHeight - 30); // Sécurité remontée à -30
+  hero.y = (canvas.height - gameState.playerHeight - 40); // Sécurité remontée à -40
 };
 
 // Ajustement en temps réel lors du redimensionnement de l'écran (Ex: Fermeture inspecteur)
 window.addEventListener('resize', () => {
   max_x = (canvas.width - gameState.playerWidth);
   if (gameState.status === 'notYetStarted') { hero.x = ((canvas.width - gameState.playerWidth) / 2); }
-  hero.y = (canvas.height - gameState.playerHeight - 30); // Maintient la hauteur de sécurité
+  hero.y = (canvas.height - gameState.playerHeight - 40); // Maintient la hauteur de sécurité
 });
 
 // ======================================================================
