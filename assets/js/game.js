@@ -291,6 +291,7 @@ let activePointerId = null;
 // FONCTION DE MISE À JOUR VISUELLE DU BOUTON HTML DE SON
 // ======================================================================
 function updateSoundButtonUI() {
+
   const soundDiv = document.getElementById("div_sound");
   const soundText = document.getElementById("sound_text");
   if (!soundDiv || !soundText) return;
@@ -320,6 +321,23 @@ function updateSoundButtonUI() {
 
 function initControls() {
   updateSoundButtonUI();
+  
+  // ======================================================================
+  // SÉCURITÉ SAFARI IPHONE : BLOQUE LE REBOND ET LA SÉLECTION SUR LE CANVAS
+  // ======================================================================
+  const gameCanvas = document.getElementById("canvas");
+  if (gameCanvas) {
+    // Interdit à l'iPhone d'afficher le menu contextuel (loupe/sélection) lors d'un appui long
+    gameCanvas.addEventListener("contextmenu", e => e.preventDefault());
+    
+    // Force Safari à ignorer la sélection visuelle d'Apple lors du toucher prolongé
+    gameCanvas.addEventListener("touchstart", e => {
+      if (e.touches.length > 1) e.preventDefault(); // Bloque le zoom à deux doigts
+    }, { passive: false });
+  }
+
+  // Bloque la sélection globale sur toute la page web lors du mouvement
+  window.addEventListener("selectstart", e => e.preventDefault()); 
 
   // ======================================================================
   // ECOUTEUR DU BOUTON DE SON
