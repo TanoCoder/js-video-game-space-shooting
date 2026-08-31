@@ -697,28 +697,23 @@ class Laser {
 }
 
 // 3. Entités et Physique
-// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
+// laser.js, enemy.js, collisions.js, physics.js, render.js et ui.js
 
 // ======================================================================
 // CLASSE ENNEMI (LOGIQUE UNIQUE ET IA DES VAISSEAUX)
 // ======================================================================
 class Enemy {
   constructor(x, y) {
-    // Coordonnées de départ reçues lors du spawn
     this.x = x;
     this.y = y;
     
-    // Échelle dynamique calculée par config.js (35x50 sur Mobile ou 55x80 sur PC)
     this.width = gameState.enemyWidth;  
     this.height = gameState.enemyHeight; 
     
-    // REGLAGE DE VITESSE NERVEUX : Initialisé à 175 pixels par seconde de base
     this.speed = 175;         
+    this.isExploding = false; 
+    this.laser = [];          
     
-    this.isExploding = false; // Passe à vrai dès qu'un laser joueur le touche
-    this.laser = [];          // Tableau local contenant les projectiles tirés par cet ennemi
-    
-    // Variables techniques de gestion pour l'animation d'explosion (Feuille de 12 frames)
     this.accudeltaTime = 0;
     this.spriteExplodeX = 0;
     this.spriteExplodeSingleFrameWidth = 95;
@@ -727,61 +722,45 @@ class Enemy {
     this.spriteExplodeTotFrame = 12;
   }
   
-  // Méthode de mise à jour appelée en boucle par le moteur (game.js)
   update(heroX, heroIsExploding, heroIsProtected) {
-    
-    // Si l'ennemi est déjà touché et explose, on fige sa descente et on coupe son arme
     if (this.isExploding) return;
 
-    // --- 1. LOGIQUE DE LA DIFFICULTÉ PROGRESSIVE (DESCENTE BLOQUÉE JUSQU'À 5000 PTS) ---
+    // --- 1. LOGIQUE DE LA DIFFICULTÉ PROGRESSIVE (DESCENTE) ---
     let currentDifficultyBonus = 0;
 
-    // L'accélération ne se déclenche STRICTEMENT qu'au-dessus de 5000 points !
     if (gameState.score >= 5000) {
-      // On calcule le bonus uniquement sur les points gagnés au-delà de 5000
       let pointsAuDela = gameState.score - 5000;
       currentDifficultyBonus = Math.floor(pointsAuDela / 1000) * 20;
     }
 
     let dynamicSpeed = this.speed + currentDifficultyBonus;
-
-    // LIMITE DE SÉCURITÉ (CAP) : Vitesse maximale bloquée à 450px/s pour que ce soit jouable
-    let maxEnemySpeed = 450;
-    dynamicSpeed = Math.min(dynamicSpeed, maxEnemySpeed);
-
-    // Déplacement vertical fluide basé sur le Delta Time
+    dynamicSpeed = Math.min(dynamicSpeed, 450);
     this.y += dynamicSpeed * gameState.dt;
 
-    // --- 2. INTELLIGENCE ARTIFICIELLE DE TIR (IA PARALLÈLE À LA VITESSE) ---
-    // L'ennemi ne fait feu que s'il est entré dans l'écran (Y > 0) et si le joueur n'est pas mort
+    // --- 2. INTELLIGENCE ARTIFICIELLE DE TIR (CADENCE CORRIGÉE) ---
     if (this.y > 0 && !heroIsExploding) {
       
       let shootDifficultyBonus = 0;
+      
+      // FIX CADENCE : L'IA ne tire plus vite QUE si le score en temps réel est au-dessus de 5000 !
       if (gameState.score >= 5000) {
         let pointsAuDela = gameState.score - 5000;
         shootDifficultyBonus = Math.floor(pointsAuDela / 1000) * 0.001;
       }
 
-      // Cadence de tir stable à 0.005 (0.5% de chance) puis augmente après 5000 points
+      // Si le score revient sous 5000 (partie suivante/mort), shootChance repasse instantanément à sa valeur calme (0.005)
       let shootChance = 0.005 + shootDifficultyBonus;
       
-      // On vérifie qu'il n'y a pas déjà trop de lasers ennemis à l'écran globalement (max 6)
       if (Math.random() < shootChance && gameState.enemyLasers.length < 6) {
+        let laserSpawnX = this.x + (this.width / 2) - 10; 
+        let laserSpawnY = this.y + this.height; 
         
-        // Calcul pour centrer parfaitement l'apparition du laser sous l'ennemi
-        let laserSpawnX = this.x + (this.width / 2) - 10; // 10px = Moitié de la largeur active
-        let laserSpawnY = this.y + this.height; // Émis depuis la base active du vaisseau alien
-        
-        // INJECTION CRITIQUE : Ajout direct dans le grand tableau mondial autonome
         gameState.enemyLasers.push({ x: laserSpawnX, y: laserSpawnY });
-        
-        // INTÉGRATION BRUITAGE : Déclenche le son de tir alien !
         playEnemyLaserSound(); 
       }
     }
 
-    // --- 3. RECYCLAGE AUTOMATIQUE (BORD INFERIEUR) ---
-    // Si l'ennemi réussit à passer sans mourir, il est replacé tout en haut avec sécurité anti-bords
+    // --- 3. RECYCLAGE AUTOMATIQUE ---
     if (this.y > window.innerHeight) {
       this.y = -100;
       let minX = 60;
@@ -789,7 +768,6 @@ class Enemy {
       this.x = getRandom(minX, maxX);
     }
   }
- 
 }
 
 // 3. Entités et Physique
@@ -1015,8 +993,8 @@ class PowerUp {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.width = 30;
-    this.height = 30;
+    this.width = 45;
+    this.height = 45;
     this.speed = 150; // Vitesse de descente du bonus vers le bas
   }
   update() {
@@ -1220,43 +1198,45 @@ function draw() {
   // ======================================================================
   // DESSIN DU POWER-UP : CHÂSSIS SCI-FI AVEC BORDURE CYAN CLIGNOTANTE
   // ======================================================================
+    // ======================================================================
+  // DESSIN DU POWER-UP GRAND FORMAT ET BORDURE CYAN CLIGNOTANTE
+  // ======================================================================
   gameState.powerUps.forEach(p => {
     ctx.save();
     
-    // CALCUL DU CLIGNOTEMENT REPRÉSENTANT L'ÉNERGIE (Varie de 0.2 à 1.0 en continu)
     let pulseOpacity = 0.6 + Math.sin(performance.now() / 100) * 0.4;
     
-    // 1. LE CHÂSSIS DU RECEPTACLE (Boîtier gris acier avec néon cyan clignotant)
-    ctx.fillStyle = "#1c2326";       // Gris métallique foncé
-    ctx.strokeStyle = `rgba(0, 255, 255, ${pulseOpacity})`; // Bordure clignotante
-    ctx.lineWidth = 2;
+    // 1. LE CHÂSSIS GRAND FORMAT (45x45)
+    ctx.fillStyle = "#1c2326";       
+    ctx.strokeStyle = `rgba(0, 255, 255, ${pulseOpacity})`; 
+    ctx.lineWidth = 2.5; // Bordure un peu plus épaisse
     
-    // Le halo lumineux suit le clignotement pour un effet visuel pro
     ctx.shadowColor = "#00ffff";
-    ctx.shadowBlur = 4 + (pulseOpacity * 10); 
+    ctx.shadowBlur = 4 + (pulseOpacity * 12); 
     
     ctx.beginPath();
     ctx.rect(p.x, p.y, p.width, p.height);
     ctx.fill();
     ctx.stroke();
     
-    // 2. LE RECYCLAGE DES SPRITES (Vos deux tirs lasers miniatures)
+    // 2. LES DEUX TIRS LASERS MINIATURES AJUSTÉS (Plus longs et mieux espacés)
     // Laser miniature Gauche
-    ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 5, p.y + 4, 8, 22); 
+    ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 8, p.y + 6, 11, 32); 
     // Laser miniature Droit
-    ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 17, p.y + 4, 8, 22); 
+    ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 26, p.y + 6, 11, 32); 
     
-    // 3. LA DIODE ÉLECTRONIQUE (Un point vert qui clignote à l'inverse de la bordure)
+    // 3. LA DIODE ÉLECTRONIQUE CENTRÉE EN BAS
     let diodeOpacity = 0.6 + Math.cos(performance.now() / 100) * 0.4;
     ctx.fillStyle = `rgba(0, 255, 0, ${diodeOpacity})`;
     ctx.shadowColor = "#00ff00";
     ctx.shadowBlur = diodeOpacity * 6;
     ctx.beginPath();
-    ctx.arc(p.x + p.width / 2, p.y + 24, 2, 0, Math.PI * 2);
+    ctx.arc(p.x + p.width / 2, p.y + 39, 3, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.restore();
   });
+
 
   if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
   if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) drawEnemiesAndTheirLasers(); 
