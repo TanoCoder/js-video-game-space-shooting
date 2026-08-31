@@ -280,18 +280,13 @@ const inputs = {
   keyRight: false,
   keySpace: false,
   touchX: null,
-  startX: 0,   // 👈 AJOUTÉ : Position d'origine du vaisseau au clic
-  targetX: null // 👈 AJOUTÉ : Position calculée que le vaisseau doit atteindre
+  startX: 0,   
+  targetX: null 
 };
 
-// On retire les anciennes variables touchLeftId et touchRightId devenues inutiles
 let activePointerId = null; 
 
-// ======================================================================
-// FONCTION DE MISE À JOUR VISUELLE DU BOUTON HTML DE SON
-// ======================================================================
 function updateSoundButtonUI() {
-
   const soundDiv = document.getElementById("div_sound");
   const soundText = document.getElementById("sound_text");
   if (!soundDiv || !soundText) return;
@@ -320,31 +315,29 @@ function updateSoundButtonUI() {
 }
 
 function initControls() {
-  // Force Safari iOS à activer les états de touch transparents
-  document.addEventListener("touchstart", function() {}, true);
+  document.addEventListener("touchstart", function() {}, true);  
 
-  updateSoundButtonUI();
-  
-  // ======================================================================
-  // SÉCURITÉ SAFARI IPHONE : BLOQUE LE REBOND ET LA SÉLECTION SUR LE CANVAS
-  // ======================================================================
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    let now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault(); 
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
   const gameCanvas = document.getElementById("canvas");
   if (gameCanvas) {
-    // Interdit à l'iPhone d'afficher le menu contextuel (loupe/sélection) lors d'un appui long
+    gameCanvas.addEventListener("selectstart", e => e.preventDefault());
     gameCanvas.addEventListener("contextmenu", e => e.preventDefault());
-    
-    // Force Safari à ignorer la sélection visuelle d'Apple lors du toucher prolongé
     gameCanvas.addEventListener("touchstart", e => {
-      if (e.touches.length > 1) e.preventDefault(); // Bloque le zoom à deux doigts
+      if (e.touches.length > 1) e.preventDefault(); 
     }, { passive: false });
   }
 
-  // Bloque la sélection globale sur toute la page web lors du mouvement
   window.addEventListener("selectstart", e => e.preventDefault()); 
+  updateSoundButtonUI();  
 
-  // ======================================================================
-  // ECOUTEUR DU BOUTON DE SON
-  // ======================================================================
   const soundDiv = document.getElementById("div_sound");
   if (soundDiv) {
     soundDiv.addEventListener("click", (e) => {
@@ -357,22 +350,14 @@ function initControls() {
     });
   }
 
-  // ====================================================================
-  // ECOUTEUR DU BOUTON START (Modifié pour supporter le test local direct)
-  // ======================================================================
   const startButton = document.getElementById('div_run');
   if (startButton) {
     startButton.addEventListener('pointerdown', (e) => {
-        e.stopPropagation(); // Évite que le clic ne déclenche un tir de laser immédiat
-
-        // 1. Débloquer le son sur mobile (Sécurité des navigateurs)
+        e.stopPropagation(); 
         if (window.AudioContext || window.webkitAudioContext) {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-        }
-        
-        // 2. Appel sécurisé : si la fonction est déjà prête, on l'exécute.
-        // Sinon, on attend 50ms pour laisser le temps à game.js de finir son chargement.
+        }        
         if (typeof startGame === 'function') {
             startGame();
         } else {
@@ -381,11 +366,8 @@ function initControls() {
             }, 50);
         }
     });
-  }
+  }  
 
-  // ======================================================================
-  // A. INTERCEPTION DES COMMANDES CLAVIER (PC)
-  // ======================================================================
   window.addEventListener("keydown", e => {
     if (e.key === "p" || e.key === "P") {
       if (gameState.status === 'start' || gameState.isPaused) {
@@ -405,131 +387,87 @@ function initControls() {
     if (e.key == " ") inputs.keySpace = false; 
     if (e.key == "ArrowRight") inputs.keyRight = false;
     if (e.key == "ArrowLeft") inputs.keyLeft = false;
-  });
+  });   
 
-    // ======================================================================
-  // B. INTERCEPTION DES CLICS ET TACTILES POINTERDOWN (PC / MOBILE)
-  // ======================================================================
-  window.addEventListener("pointerdown", e => {
-    if (e.target.id === "div_sound" || e.target.id === "sound_text") return;
+  if (gameCanvas) {
+    gameCanvas.addEventListener("pointerdown", e => {
+      if (e.target.id === "div_sound" || e.target.id === "sound_text") return;
+      let screenCenter = window.innerWidth / 2;
+      let screenMiddleY = window.innerHeight / 2;
 
-    let screenCenter = window.innerWidth / 2;
-    let screenMiddleY = window.innerHeight / 2;
-
-    // --- PAUSE EN COMBAT ---
-    if (!gameState.isPaused && gameState.status === 'start') {
-      let isTouchInPauseX = (e.clientX > screenCenter - 100) && (e.clientX < screenCenter + 100);
-      let isTouchInPauseY = (e.clientY > 30) && (e.clientY < 90); 
-
-      if (isTouchInPauseX && isTouchInPauseY) {
-        gameState.isPaused = true;
-        canvas.style.cursor = "default"; 
-        return;
+      if (!gameState.isPaused && gameState.status === 'start') {
+        let isTouchInPauseX = (e.clientX > screenCenter - 100) && (e.clientX < screenCenter + 100);
+        let isTouchInPauseY = (e.clientY > 30) && (e.clientY < 90); 
+        if (isTouchInPauseX && isTouchInPauseY) {
+          gameState.isPaused = true;
+          canvas.style.cursor = "default"; 
+          return;
+        }
       }
-    }
-
-    // --- REPRISE DE LA PAUSE AU CENTRE ---
-    else if (gameState.isPaused) {
-      let isTouchInCenterX = (e.clientX > screenCenter - 150) && (e.clientX < screenCenter + 150);
-      let isTouchInCenterY = (e.clientY > screenMiddleY - 80) && (e.clientY < screenMiddleY + 80);
-
-      if (isTouchInCenterX && isTouchInCenterY) {
-        gameState.isPaused = false; 
-        canvas.style.cursor = "default"; 
-        return;
+      else if (gameState.isPaused) {
+        let isTouchInCenterX = (e.clientX > screenCenter - 150) && (e.clientX < screenCenter + 150);
+        let isTouchInCenterY = (e.clientY > screenMiddleY - 80) && (e.clientY < screenMiddleY + 80);
+        if (isTouchInCenterX && isTouchInCenterY) {
+          gameState.isPaused = false; 
+          canvas.style.cursor = "default"; 
+          return;
+        }
+        return; 
       }
-      return; 
-    }
 
-    // --- CORRECTION DÉPLACEMENT RELATIF GLOBAAL ---
-    if (gameState.status !== 'gameOver' && !gameState.isPaused) {
-      activePointerId = e.pointerId;
-      inputs.touchX = e.clientX;   // On mémorise le point de départ du doigt
-      inputs.startX = hero.x;       // On mémorise la position actuelle du vaisseau
-      inputs.targetX = hero.x;      // Au clic initial, la cible est le vaisseau lui-même
-      inputs.keySpace = true;       // Déclenche le tir automatique
-    }
-  });
+      if (gameState.status !== 'gameOver' && !gameState.isPaused) {
+        activePointerId = e.pointerId;
+        inputs.touchX = e.clientX;   
+        inputs.startX = hero.x;       
+        inputs.targetX = hero.x;      
+        inputs.keySpace = true;       
+      }
+    });
 
-  window.addEventListener("pointerup", e => {
-    if (e.pointerId === activePointerId) {
-      inputs.touchX = null;
-      inputs.targetX = null;        // On nettoie la cible relative
-      inputs.keySpace = false; 
-      activePointerId = null;
-    }
-  });
+    gameCanvas.addEventListener("pointerup", e => {
+      if (e.pointerId === activePointerId) {
+        inputs.touchX = null;
+        inputs.targetX = null;        
+        inputs.keySpace = false; 
+        activePointerId = null;
+      }
+    });
 
-  window.addEventListener("pointercancel", e => {
-    if (e.pointerId === activePointerId) {
-      inputs.touchX = null;
-      inputs.targetX = null;
-      inputs.keySpace = false;
-      activePointerId = null;
-    }
-  });
+    gameCanvas.addEventListener("pointercancel", e => {
+      if (e.pointerId === activePointerId) {
+        inputs.touchX = null;
+        inputs.targetX = null;
+        inputs.keySpace = false;
+        activePointerId = null;
+      }
+    });
 
-   // ======================================================================
-  // C. SUIVI DU MOUVEMENT (PC SURVOL SOURIS & MOBILE GLISSEMENT DOIGT)
-  // ======================================================================
-  window.addEventListener("pointermove", e => {
-    let screenCenter = window.innerWidth / 2;
-    let screenMiddleY = window.innerHeight / 2;
+    gameCanvas.addEventListener("pointermove", e => {
+      let screenCenter = window.innerWidth / 2;
+      let screenMiddleY = window.innerHeight / 2;
 
-    // 1. Si un doigt est posé et glisse (Mouvement relatif)
-    if (gameState.status !== 'gameOver' && !gameState.isPaused && e.pointerId === activePointerId) {
-      if (e.cancelable) e.preventDefault(); 
-      
-      // On calcule l'écart parcouru par le doigt depuis le clic initial
-      let deltaX = e.clientX - inputs.touchX;
-      
-      // La nouvelle cible du vaisseau est sa position d'origine + le mouvement du doigt
-      inputs.targetX = inputs.startX + deltaX;
-    }
+      if (gameState.status !== 'gameOver' && !gameState.isPaused && e.pointerId === activePointerId) {
+        if (e.cancelable) e.preventDefault(); 
+        let deltaX = e.clientX - inputs.touchX;
+        inputs.targetX = inputs.startX + deltaX;
+      }
 
-    // 2. Gestion visuelle des curseurs de survol de la pause (Uniquement sur PC)
-    if (window.innerWidth < 1024) return;
+      if (window.innerWidth < 1024) return;
 
-    if (gameState.isPaused) {
-      let isHoverInCenterX = (e.clientX > screenCenter - 150) && (e.clientX < screenCenter + 150);
-      let isHoverInCenterY = (e.clientY > screenMiddleY - 80) && (e.clientY < screenMiddleY + 80);
-
-      if (isHoverInCenterX && isHoverInCenterY) {
-        canvas.style.cursor = "pointer"; 
+      if (gameState.isPaused) {
+        let isHoverInCenterX = (e.clientX > screenCenter - 150) && (e.clientX < screenCenter + 150);
+        let isHoverInCenterY = (e.clientY > screenMiddleY - 80) && (e.clientY < screenMiddleY + 80);
+        if (isHoverInCenterX && isHoverInCenterY) { canvas.style.cursor = "pointer"; } else { canvas.style.cursor = "default"; }
+      }
+      else if (!gameState.isPaused && gameState.status === 'start') {
+        let isHoverInPauseX = (e.clientX > screenCenter - 100) && (e.clientX < screenCenter + 100);
+        let isHoverInPauseY = (e.clientY > 30) && (e.clientY < 90);
+        if (isHoverInPauseX && isHoverInPauseY) { canvas.style.cursor = "pointer"; } else { canvas.style.cursor = "default"; }
       } else {
-        canvas.style.cursor = "default"; 
+        canvas.style.cursor = "default";
       }
-    }
-    else if (!gameState.isPaused && gameState.status === 'start') {
-      let isHoverInPauseX = (e.clientX > screenCenter - 100) && (e.clientX < screenCenter + 100);
-      let isHoverInPauseY = (e.clientY > 30) && (e.clientY < 90);
-
-      if (isHoverInPauseX && isHoverInPauseY) {
-        canvas.style.cursor = "pointer"; 
-      } else {
-        canvas.style.cursor = "default"; 
-      }
-    } else {
-      canvas.style.cursor = "default";
-    }
-  });
-
-  window.addEventListener("pointerup", e => {
-    if (e.pointerId === activePointerId) {
-      inputs.touchX = null; // Le joueur lève le doigt, on arrête de suivre la position
-      inputs.keySpace = false; // On arrête de tirer
-      activePointerId = null;
-    }
-  });
-
-  window.addEventListener("pointercancel", e => {
-    if (e.pointerId === activePointerId) {
-      inputs.touchX = null;
-      inputs.keySpace = false;
-      activePointerId = null;
-    }
-  });  
-
+    });
+  }
 }
 
 // 2. Entrées et Environnement
