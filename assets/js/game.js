@@ -730,7 +730,7 @@ class Enemy {
     let dynamicSpeed = this.speed; // 175 par défaut (Mode Normal)
 
     if (tranche % 2 !== 0) {
-      dynamicSpeed = 350; // Mode RAPIDE forcé (entre 5000-9999, 15000-19999, etc.)
+      dynamicSpeed = 260; // Mode RAPIDE forcé (entre 5000-9999, 15000-19999, etc.)
     }
 
     this.y += dynamicSpeed * gameState.dt;
@@ -1119,7 +1119,7 @@ function update() {
     let currentEnemySpeed = 175; // Vitesse de base par défaut
     
     if (tranche % 2 !== 0) {
-      currentEnemySpeed = 350; // Mode RAPIDE forcé
+      currentEnemySpeed = 260; // Mode RAPIDE forcé
     }
 
     let dynamicLaserSpeed = currentEnemySpeed + 225; 
