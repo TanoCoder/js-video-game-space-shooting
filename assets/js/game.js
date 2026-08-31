@@ -455,8 +455,14 @@ function initControls() {
 
       if (gameState.status !== 'gameOver' && !gameState.isPaused && e.pointerId === activePointerId) {
         if (e.cancelable) e.preventDefault(); 
+        // On calcule l'écart parcouru par le doigt depuis le clic initial
         let deltaX = e.clientX - inputs.touchX;
-        inputs.targetX = inputs.startX + deltaX;
+
+        // SENSIVILITÉ SMARTPHONE : On multiplie par 1.6 pour que le héros parcoure 
+        // beaucoup plus de distance que votre pouce. Le pilotage devient instantané !
+        let sensitivity = 1.6; 
+
+        inputs.targetX = inputs.startX + (deltaX * sensitivity);
       }
 
       if (window.innerWidth < 1024) return;
