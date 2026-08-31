@@ -710,7 +710,8 @@ class Enemy {
     this.width = gameState.enemyWidth;  
     this.height = gameState.enemyHeight; 
     
-    this.speed = 175;         
+    // CORRECTION : Augmentation de 10 de la vitesse de base (185 au lieu de 175)
+    this.speed = 185;         
     this.isExploding = false; 
     this.laser = [];          
     
@@ -725,12 +726,13 @@ class Enemy {
   update(heroX, heroIsExploding, heroIsProtected) {
     if (this.isExploding) return;
 
-    // --- 1. LOGIQUE MIROIR PAR PALIER DE 5000 POINTS (DESCENTE) ---
+    // --- 1. LOGIQUE MIROIR PAR PALIER DE 5000 POINTS (DESCENTE COMPATIBLE DT) ---
     let tranche = Math.floor(gameState.score / 5000);
-    let dynamicSpeed = this.speed; // 175 par défaut (Mode Normal)
+    let dynamicSpeed = this.speed; // 185 par défaut (Mode Normal)
 
     if (tranche % 2 !== 0) {
-      dynamicSpeed = 260; // Mode RAPIDE forcé (entre 5000-9999, 15000-19999, etc.)
+      // CORRECTION : Mode RAPIDE rehaussé automatiquement de 10 (270 au lieu de 260)
+      dynamicSpeed = 270; 
     }
 
     this.y += dynamicSpeed * gameState.dt;
@@ -1116,10 +1118,10 @@ function update() {
     // Si tranche est paire (0, 2, 4...) -> Mode Normal (Ex: 0-4999, 10000-14999)
     // Si tranche est impaire (1, 3, 5...) -> Mode Rapide (Ex: 5000-9999, 15000-19999)
     let tranche = Math.floor(gameState.score / 5000);
-    let currentEnemySpeed = 175; // Vitesse de base par défaut
+    let currentEnemySpeed = 185; // Vitesse de base par défaut
     
     if (tranche % 2 !== 0) {
-      currentEnemySpeed = 260; // Mode RAPIDE forcé
+      currentEnemySpeed = 270; // Mode RAPIDE forcé
     }
 
     let dynamicLaserSpeed = currentEnemySpeed + 225; 
