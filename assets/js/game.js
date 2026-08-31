@@ -388,7 +388,8 @@ function initControls() {
   // B. INTERCEPTION DES CLICS ET TACTILES POINTERDOWN (PC / MOBILE)
   // ======================================================================
   window.addEventListener("pointerdown", e => {
-    if (e.target.id === "div_sound" || e.target.id === "sound_text" || e.target.id === "div_run") return;
+    // CORRECTION : On retire "div_run" d'ici pour autoriser le tactile sur le bouton START
+    if (e.target.id === "div_sound" || e.target.id === "sound_text") return;
 
     let screenCenter = window.innerWidth / 2;
     let screenMiddleY = window.innerHeight / 2;
@@ -418,18 +419,16 @@ function initControls() {
       return; 
     }
 
-    // --- GESTION DU PILOTAGE & TIR TACTILE EN JEU ---
-    if (gameState.status === 'start' && !gameState.isPaused) {
+    // --- GESTION DU PILOTAGE & TIR TACTILE EN JEU OU ACCUEIL ---
+    if (gameState.status !== 'gameOver' && !gameState.isPaused) {
       activePointerId = e.pointerId;
       inputs.touchX = e.clientX; 
 
-      // TIRER EN TOUCHANT L'ÉCRAN : On simule l'appui sur Espace ou on appelle votre fonction
+      // Déclenche le tir automatique au premier contact !
       inputs.keySpace = true; 
-      
-      // Si vous préférez appeler directement la fonction de tir (décommentez ci-dessous si nécessaire) :
-      // if (typeof shoot === 'function') shoot();
     }
   });
+
 
   window.addEventListener("pointerup", e => {
     if (e.pointerId === activePointerId) {
@@ -455,7 +454,7 @@ function initControls() {
     let screenMiddleY = window.innerHeight / 2;
 
     // 1. Si un doigt est posé et glisse en plein jeu, on met à jour la position cible X du vaisseau
-    if (gameState.status === 'start' && !gameState.isPaused && e.pointerId === activePointerId) {
+    if (gameState.status !== 'gameOver' && !gameState.isPaused && e.pointerId === activePointerId) {
       
       // PROTECTION MOBILE : Force le smartphone à ignorer les gestes système de l'OS pendant qu'on pilote
       if (e.cancelable) e.preventDefault(); 
