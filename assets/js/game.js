@@ -987,6 +987,25 @@ function checkCollisions(hero, onHeroHit) {
 // laser.js, enemy.js, collisions.js, physics.js, render.js et ui.js
 
 // ======================================================================
+// SYSTÈME DE MISE À JOUR DISCRÈTE (ANTI-CACHE IPHONE)
+// ======================================================================
+function verifierMiseAJourJeu() {
+  fetch('version.txt?nocache=' + performance.now())
+    .then(response => {
+      if (!response.ok) throw new Error();
+      return response.text();
+    })
+    .then(versionEnLigne => {
+      let versionLocale = localStorage.getItem("spaceShooterVersion") || "1.0";
+      if (versionEnLigne.trim() !== versionLocale.trim()) {
+        localStorage.setItem("spaceShooterVersion", versionEnLigne.trim());
+        window.location.reload();
+      }
+    })
+    .catch(err => console.log("Mode hors-ligne ou GitHub injoignable"));
+}
+
+// ======================================================================
 // CLASSE POUR L'OBJET POWER-UP (DOUBLE CANON)
 // ======================================================================
 class PowerUp {
@@ -1167,21 +1186,25 @@ function update() {
       gameState.hasDoubleCanon = false;   
       gameState.powerUps = [];           
       gameState.lastPowerUpSpawnTime = 0; 
+
+      // 🚀 NOUVEAUTÉ AUTOMATIQUE : Si c'est le Game Over, on check s'il y a un build en ligne !
+      if (gameState.playerHp <= 0) {
+        verifierMiseAJourJeu();
+      }
     }); 
   }
 
   // ======================================================================
   // GESTION DE L'INCLINAISON DES AILES AUTOMATIQUE (PC + IPHONE)
   // ======================================================================
-  // On calcule la différence de déplacement réelle sur cette image de jeu
   let mouvementReelX = hero.x - ancienX;
 
   if (mouvementReelX > 0.5) {
-    hero.direction = 'right'; // Le vaisseau bouge à droite -> ailes tournées à droite
+    hero.direction = 'right'; 
   } else if (mouvementReelX < -0.5) {
-    hero.direction = 'left';  // Le vaisseau bouge à gauche -> ailes tournées à gauche
+    hero.direction = 'left';  
   } else {
-    hero.direction = 'flat';  // Le vaisseau ne bouge plus -> ailes à plat
+    hero.direction = 'flat';  
   }
 }
 
