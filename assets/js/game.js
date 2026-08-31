@@ -320,6 +320,9 @@ function updateSoundButtonUI() {
 }
 
 function initControls() {
+  // Force Safari iOS à activer les états de touch transparents
+  document.addEventListener("touchstart", function() {}, true);
+
   updateSoundButtonUI();
   
   // ======================================================================
