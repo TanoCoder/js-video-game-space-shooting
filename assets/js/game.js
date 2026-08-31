@@ -712,7 +712,7 @@ class Enemy {
     this.width = gameState.enemyWidth;  
     this.height = gameState.enemyHeight; 
     
-    // REGLAGE DE VITESSE NERVEUX : Initialisé à 300 pixels par seconde pour du challenge direct !
+    // REGLAGE DE VITESSE NERVEUX : Initialisé à 175 pixels par seconde de base
     this.speed = 175;         
     
     this.isExploding = false; // Passe à vrai dès qu'un laser joueur le touche
@@ -727,15 +727,22 @@ class Enemy {
     this.spriteExplodeTotFrame = 12;
   }
   
-  // Méthode de mise à jour appelée en boucle 60 fois par seconde par le moteur (game.js)
+  // Méthode de mise à jour appelée en boucle par le moteur (game.js)
   update(heroX, heroIsExploding, heroIsProtected) {
     
     // Si l'ennemi est déjà touché et explose, on fige sa descente et on coupe son arme
     if (this.isExploding) return;
 
-    // --- 1. LOGIQUE DE LA DIFFICULTÉ PROGRESSIVE (DESCENTE) ---
-    // Calcul du bonus de vélocité : +20 pixels par seconde à chaque tranche de 1000 points.
-    let currentDifficultyBonus = Math.floor(gameState.score / 1000) * 20;
+    // --- 1. LOGIQUE DE LA DIFFICULTÉ PROGRESSIVE (DESCENTE BLOQUÉE JUSQU'À 5000 PTS) ---
+    let currentDifficultyBonus = 0;
+
+    // L'accélération ne se déclenche STRICTEMENT qu'au-dessus de 5000 points !
+    if (gameState.score >= 5000) {
+      // On calcule le bonus uniquement sur les points gagnés au-delà de 5000
+      let pointsAuDela = gameState.score - 5000;
+      currentDifficultyBonus = Math.floor(pointsAuDela / 1000) * 20;
+    }
+
     let dynamicSpeed = this.speed + currentDifficultyBonus;
 
     // LIMITE DE SÉCURITÉ (CAP) : Vitesse maximale bloquée à 450px/s pour que ce soit jouable
@@ -745,12 +752,18 @@ class Enemy {
     // Déplacement vertical fluide basé sur le Delta Time
     this.y += dynamicSpeed * gameState.dt;
 
-    // --- 2. INTELLIGENCE ARTIFICIELLE DE TIR (IA) ---
+    // --- 2. INTELLIGENCE ARTIFICIELLE DE TIR (IA PARALLÈLE À LA VITESSE) ---
     // L'ennemi ne fait feu que s'il est entré dans l'écran (Y > 0) et si le joueur n'est pas mort
     if (this.y > 0 && !heroIsExploding) {
       
-      // Cadence de tir aléatoire de base (0.5% de chance par frame), boostée par le score
-      let shootChance = 0.005 + (Math.floor(gameState.score / 1000) * 0.001);
+      let shootDifficultyBonus = 0;
+      if (gameState.score >= 5000) {
+        let pointsAuDela = gameState.score - 5000;
+        shootDifficultyBonus = Math.floor(pointsAuDela / 1000) * 0.001;
+      }
+
+      // Cadence de tir stable à 0.005 (0.5% de chance) puis augmente après 5000 points
+      let shootChance = 0.005 + shootDifficultyBonus;
       
       // On vérifie qu'il n'y a pas déjà trop de lasers ennemis à l'écran globalement (max 6)
       if (Math.random() < shootChance && gameState.enemyLasers.length < 6) {
@@ -996,7 +1009,7 @@ function checkCollisions(hero, onHeroHit) {
 // laser.js, enemy.js, collisions.js, physics.js, render.js et ui.js
 
 // ======================================================================
-// CLASSE CLASSIQUE POUR L'OBJET POWER-UP (DOUBLE CANON)
+// CLASSE POUR L'OBJET POWER-UP (DOUBLE CANON)
 // ======================================================================
 class PowerUp {
   constructor(x, y) {
@@ -1047,11 +1060,11 @@ function update() {
       if (currentTime - lastHeroFireTime >= coolDownHeroFireTime) {
         
         if (gameState.hasDoubleCanon) {
-          // 🔥 TIR DOUBLE PARALLÈLE : Décalé proprement à gauche (-32) et à droite (+8)
+          // Tir double décalé proprement à gauche (-32) et à droite (+8)
           gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 32), hero.y - 35)); 
           gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 + 8), hero.y - 35)); 
         } else {
-          // TIR SIMPLE CLASSIQUE : Centrage parfait à -12
+          // Tir simple centré à -12
           gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 12), hero.y - 35)); 
         }
         
@@ -1065,11 +1078,9 @@ function update() {
   }
 
   // ======================================================================
-  // GESTION DU TIMER AUTONOME DE L'IPHONE ET APPARITION DU POWER-UP
+  // GESTION DU TIMER AUTONOME (Apparition toutes les 5s APRÈS 5000 POINTS)
   // ======================================================================
-  // On l'autorise partout sauf en Game Over/Pause, tant que le bonus n'est pas ramassé
-  if (gameState.status !== 'gameOver' && !gameState.isPaused && !gameState.hasDoubleCanon) {
-    
+  if (gameState.status === 'start' && gameState.score >= 5000 && !gameState.isPaused && !gameState.hasDoubleCanon) {
     if (!gameState.lastPowerUpSpawnTime || gameState.lastPowerUpSpawnTime === 0) {
       gameState.lastPowerUpSpawnTime = performance.now();
     }
@@ -1080,9 +1091,11 @@ function update() {
     if (currentTicks - gameState.lastPowerUpSpawnTime >= 5000) {
       let spawnX = getRandom(60, canvas.width - 60);
       gameState.powerUps.push(new PowerUp(spawnX, -40));
-      
-      gameState.lastPowerUpSpawnTime = currentTicks; // Relance pour les prochaines 5s
+      gameState.lastPowerUpSpawnTime = currentTicks; // Relance le chrono pour les prochaines 5s
     }
+  } else {
+    // Force la réinitialisation tant qu'on n'a pas 5000 points
+    gameState.lastPowerUpSpawnTime = 0;
   }
 
   // Mise à jour de la position et de la descente des Power-Ups
@@ -1092,26 +1105,24 @@ function update() {
   for (let i = gameState.powerUps.length - 1; i >= 0; i--) {
     let p = gameState.powerUps[i];
     
-    // Nettoyage si le bonus sort par le bas de l'écran
     if (p.y > window.innerHeight) {
       gameState.powerUps.splice(i, 1);
       continue;
     }
 
-    // Collision AABB : Si le héros touche le carré rouge
+    // Collision avec le Power-Up
     if (!hero.isExploding &&
         hero.x < p.x + p.width &&
         hero.x + gameState.playerWidth > p.x &&
         hero.y < p.y + p.height &&
         hero.y + gameState.playerHeight > p.y) {
           
-      // 🎉 LE BONUS EST ACTIVÉ !
       gameState.hasDoubleCanon = true;   
-      gameState.powerUps = [];           // On nettoie l'écran
-      gameState.lastPowerUpSpawnTime = 0; // Coupe le chrono d'apparition
+      gameState.powerUps = [];           
+      gameState.lastPowerUpSpawnTime = 0; 
       
       if (typeof playExplosionSound === 'function') { 
-        playExplosionSound(); // Petit retour sonore de puissance
+        playExplosionSound(); 
       }
       break;
     }
@@ -1119,15 +1130,22 @@ function update() {
 
   // Déplacement de tous les projectiles lasers actifs du joueur
   gameState.arrayLaser.forEach(laser => laser.update());
-  // Garbage Collector : Supprime de la mémoire les tirs hors-écran
   for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
 
-  // --- MISE À JOUR DES LASERS ENNEMIS GLOBAUX ---
+  // ======================================================================
+  // --- MISE À JOUR DES LASERS ENNEMIS (Vitesse bloquée jusqu'à 5000 pts) ---
+  // ======================================================================
   if (gameState.status === 'start') {
-    let currentDifficultyBonus = Math.floor(gameState.score / 1000) * 20;
+    let currentDifficultyBonus = 0;
+
+    // L'accélération ne se déclenche qu'au-dessus de 5000 points
+    if (gameState.score >= 5000) {
+      let pointsAuDela = gameState.score - 5000;
+      currentDifficultyBonus = Math.floor(pointsAuDela / 1000) * 20;
+    }
+
     let currentEnemySpeed = 175 + currentDifficultyBonus; 
     currentEnemySpeed = Math.min(currentEnemySpeed, 450); 
-    
     let dynamicLaserSpeed = currentEnemySpeed + 225; 
 
     gameState.enemyLasers.forEach(l => {
@@ -1156,7 +1174,16 @@ function update() {
     }
     
     gameState.enemies.forEach(en => en.update(hero.x, hero.isExploding, hero.isProtected));
-    checkCollisions(hero, () => { hero.isExploding = true; gameState.playerHp--; }); 
+      // VERIFICATION DES IMPACTS ET PERTE DU POWER-UP À LA MORT/DÉGÂT
+      checkCollisions(hero, () => { 
+      hero.isExploding = true; 
+      gameState.playerHp--; 
+      
+      // ❌ LE HÉROS COUPE SON DOUBLE CANON DÈS QU'IL EST TOUCHÉ !
+      gameState.hasDoubleCanon = false;   
+      gameState.powerUps = [];           // Supprime les bonus en cours de descente
+      gameState.lastPowerUpSpawnTime = 0; // Relancera le chrono de 5s après sa réapparition
+    }); 
   }
 }
 
