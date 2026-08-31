@@ -1040,18 +1040,28 @@ function update() {
       if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
     }
     
-    // TIR AUTOMATIQUE : On autorise le tir en jeu ET sur l'écran d'accueil
-    // --- B. AUTOMATIC SHOOTING SYSTEM ---
+    // ======================================================================
+    // CADENCE DE TIR SÉCURISÉE (Évite le gel de l'écran sur mobile)
+    // ======================================================================
     let currentTime = performance.now();
     
-    // CORRECTION PC : À l'accueil, on tire si on glisse/clique (touchX) OU si on presse Espace (keySpace)
+    // Conditions de tir propres
     let shouldFireAtHome = (gameState.status === 'notYetStarted' && (inputs.touchX !== null || inputs.keySpace));
     let shouldFireInGame = (gameState.status === 'start');
 
-    if ((shouldFireInGame || shouldFireAtHome) && (currentTime - lastHeroFireTime > coolDownHeroFireTime)) {
-      gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 16), hero.y - 35)); 
-      lastHeroFireTime = currentTime;
-      playLaserSound(); 
+    if ((shouldFireInGame || shouldFireAtHome) && !hero.isExploding) {
+      // Sécurité : Vérification stricte que le temps de recharge (cooldown) est dépassé
+      if (currentTime - lastHeroFireTime >= coolDownHeroFireTime) {
+        
+        // Création du laser (avec le centrage parfait à -16)
+        gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 16), hero.y - 35)); 
+        
+        lastHeroFireTime = currentTime;
+        
+        if (typeof playLaserSound === 'function') {
+          playLaserSound(); 
+        }
+      }
     }    
   }
 
@@ -1060,7 +1070,7 @@ function update() {
   // Garbage Collector : Supprime de la mémoire les tirs hors-écran
   for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
 
-  // --- MISE À JOUR DES LASERS ENNEMIS GLOBAUX ---
+  // --- MISE À PRIVILÈGE DES LASERS ENNEMIS GLOBAUX ---
   if (gameState.status === 'start') {
     let currentDifficultyBonus = Math.floor(gameState.score / 1000) * 20;
     let currentEnemySpeed = 175 + currentDifficultyBonus; 
@@ -1097,6 +1107,7 @@ function update() {
     checkCollisions(hero, () => { hero.isExploding = true; gameState.playerHp--; }); 
   }
 }
+
 // 3. Entités et Physique
 // laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
 
