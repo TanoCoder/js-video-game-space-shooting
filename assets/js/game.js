@@ -1149,6 +1149,9 @@ window.addEventListener('resize', () => {
 // ======================================================================
 // FONCTION DE DÉMARRAGE DU JEU (Appelée par controls.js)
 // ======================================================================
+// ======================================================================
+// FONCTION DE DÉMARRAGE DU JEU (Appelée par controls.js)
+// ======================================================================
 function startGame() {
   if (gameState.status === 'notYetStarted') {
     const rect = divRun.getBoundingClientRect();
@@ -1161,9 +1164,20 @@ function startGame() {
     if (!gameState.isMuted) {
       setTimeout(() => { if (typeof playExplosionSound === 'function') playExplosionSound(); }, 1);
     }
+    
+    // 1. On passe le jeu en mode actif
     gameState.status = 'start';
+
+    // 2. CORRECTION TIR DIRECT : On force le tout premier tir de laser immédiatement !
+    let currentTime = performance.now();
+    gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 21), hero.y - 35)); 
+    lastHeroFireTime = currentTime;
+    if (typeof playLaserSound === 'function') {
+      playLaserSound();
+    }
   }
 }
+
 
 // Écouteurs globaux de réinitialisation si le joueur est sur l'écran de Game Over
 [window, 'touchstart'].forEach(ev => window.addEventListener(ev, () => { if (gameState.status === 'gameOver') resetGame(hero); }));
