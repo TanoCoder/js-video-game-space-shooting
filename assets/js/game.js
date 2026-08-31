@@ -1,3 +1,6 @@
+// 1. Fondations
+// config.js et utils.js
+
 // --- 1. CONFIGURATION DU CANVAS GRAPHIQUE ---
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d"); 
@@ -77,6 +80,200 @@ assets.imgEnemyLaser.src = "assets/img/beams.png";
 function getRandom(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+// 1. Fondations
+// config.js et utils.js
+
+// ======================================================================
+// 1. SPAWN DES VAGUES D'ENNEMIS (RÉPARTITION UNIFORME DE DÉPART)
+// ======================================================================
+function spawnInitialEnemies() {
+  gameState.enemies = []; // Remise à zéro complète du tableau global
+  
+  // Calcul de l'écart horizontal pour étaler les 10 ennemis sur toute la largeur
+  let spacing = (canvas.width - 120) / 9; 
+  let currentX = 50; // Marge de sécurité initiale sur le bord gauche                 
+  
+  for (let i = 0; i < 10; i++) {
+    // Génère des altitudes décalées en dents de scie pour créer un effet de flotte
+    let initialY = -400 - (i % 2 === 0 ? 150 : 0);
+    gameState.enemies.push(new Enemy(currentX, initialY));
+    currentX += spacing; // Décale le curseur vers la droite pour le prochain ennemi
+  }
+}
+
+// ======================================================================
+// 2. RÉINITIALISATION PHYSIQUE (RESTART APRÈS UN GAME OVER)
+// ======================================================================
+function resetGame(hero) {
+  gameState.enemyLasers = [];
+  gameState.score = 0; 
+  gameState.playerHp = gameState.maxHp; 
+  gameState.arrayLaser = []; 
+  gameState.deletedEnemiesPosX = [];
+  
+  spawnInitialEnemies(); // Recrée une nouvelle flotte d'ennemis propre
+  
+  // Recentrage du vaisseau par rapport à la largeur active de l'écran (PC ou Mobile)
+  hero.x = (canvas.width - gameState.playerWidth) / 2; 
+  
+  // Hauteur de sécurité remuée pour laisser de l'espace en bas de l'écran
+  hero.y = canvas.height - gameState.playerHeight - 30;
+  
+  hero.isExploding = false; 
+  hero.isProtected = true; // Réarme temporairement le bouclier protecteur jaune
+  anim.fontSize = 150;     // Réinitialise la taille du texte d'effet GET READY !
+  
+  // Supprime l'immunité du bouclier après 3 secondes de jeu
+  setTimeout(() => hero.isProtected = false, 3000);
+  gameState.status = 'start'; // Relance le moteur de combat actif
+}
+
+// ======================================================================
+// 3. RENDU GRAPHISME DE L'EXPLOSION DU BOUTON ACCUEIL START
+// ======================================================================
+function drawBoutonExplosion(vars) {
+  vars.accudeltaTime += gameState.dt; // Accumule le temps écoulé
+  // Dessine la frame actuelle de l'explosion du bouton d'accueil
+  ctx.drawImage(assets.explodeRunBtn, vars.spriteExplodeX, 0, 95, 96, vars.explodeX, vars.explodeY, 200, 200);
+  
+  // Cadence d'animation : change de sprite toutes les 0.05 secondes
+  if (vars.accudeltaTime > 0.05) { 
+    vars.spriteExplodeX += 95; 
+    vars.accudeltaTime = 0; 
+    // Si on dépasse la fin de la feuille de sprites (1172px), on arrête l'animation et on démarre le jeu
+    if (vars.spriteExplodeX > 1172) { 
+      vars.drawExplodeRun = false; 
+      gameState.status = 'start'; 
+      vars.spriteExplodeX = 0; 
+    } 
+  }
+}
+
+// ======================================================================
+// 4. RENDU DE LA FLOTTE ENNEMIE ET DE LEURS PROJECTILES DYNAMIQUES
+// ======================================================================
+function drawEnemiesAndTheirLasers() {
+  // Dessin des extraterrestres vivants à leur échelle active (35x50 ou 55x80)
+  gameState.enemies.forEach(en => { 
+    if (!en.isExploding) ctx.drawImage(assets.imgEnemy, 0, 0, 134, 199, en.x, en.y, gameState.enemyWidth, gameState.enemyHeight); 
+  });
+  
+  // Animation frame par frame de l'explosion des cibles touchées par le joueur
+  for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+    let en = gameState.enemies[i];
+    if (en.isExploding) {
+      en.accudeltaTime += gameState.dt; 
+      ctx.drawImage(assets.explodeRunBtn, en.spriteExplodeX, 0, en.spriteExplodeSingleFrameWidth, 96, en.x, en.y, gameState.enemyWidth + 20, gameState.enemyWidth + 20);
+      
+      if (en.accudeltaTime > en.spriteExplodeSpeedFrame) {
+        en.spriteExplodeCountCurrentFrame++; 
+        en.spriteExplodeX += en.spriteExplodeSingleFrameWidth; 
+        en.accudeltaTime = 0;
+        
+        // Dès que l'explosion se termine, on retire l'ennemi. Ses lasers ne disparaissent plus !
+        if (en.spriteExplodeCountCurrentFrame > en.spriteExplodeTotFrame) { 
+          gameState.deletedEnemiesPosX.push(en.x); 
+          gameState.enemies.splice(i, 1); 
+        }
+      }
+    }
+  }
+  
+  // CORRECTION RENDU : Dessin des lasers ennemis globaux et indépendants
+  let lW = window.innerWidth >= 1024 ? 30 : 21;
+  let lH = window.innerWidth >= 1024 ? 50 : 36;
+  gameState.enemyLasers.forEach(l => { 
+    ctx.drawImage(assets.imgEnemyLaser, 210, 310, 60, 90, l.x, l.y, lW, lH); 
+  });
+}
+
+// ======================================================================
+// 5. RENDU DU HÉROS AVEC LOGIQUE D'INCLINAISON ET ZOOMS PROPORTIONNELS
+// ======================================================================
+function drawPlayerAndShield(hero, vars) {
+  if (!hero.isExploding) {
+    if (hero.x !== undefined && hero.y !== undefined && gameState.status !== 'gameOver') {
+      
+      let currentSpaceshipImg = assets.spaceship; 
+      
+      // Configuration par défaut de la taille de dessin (100% de l'échelle calculée)
+      let drawWidth = gameState.playerWidth;
+      let drawHeight = gameState.playerHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      // CORRECTION DU RÉTRÉCISSEMENT : Si on tourne, on applique un bonus de zoom de 30%
+      // pour compenser le vide transparent présent dans vos fichiers d'images d'inclinaison.
+      if (inputs.keyLeft) {
+        currentSpaceshipImg = assets.spaceshipLeft;
+        drawWidth = gameState.playerWidth * 1.3;
+        drawHeight = gameState.playerHeight * 1.3;
+        // On décale de quelques pixels pour que le pivotement reste bien centré sur l'axe du vaisseau
+        offsetX = -(gameState.playerWidth * 0.15);
+        offsetY = -(gameState.playerHeight * 0.15);
+      } else if (inputs.keyRight) {
+        currentSpaceshipImg = assets.spaceshipRight;
+        drawWidth = gameState.playerWidth * 1.3;
+        drawHeight = gameState.playerHeight * 1.3;
+        offsetX = -(gameState.playerWidth * 0.15);
+        offsetY = -(gameState.playerHeight * 0.15);
+      }
+      
+      // Dessin automatique sans coupure avec compensation de zoom dynamique
+      ctx.drawImage(currentSpaceshipImg, hero.x + offsetX, hero.y + offsetY, drawWidth, drawHeight);
+    }
+    
+    // Rendu visuel du cercle de bouclier jaune et animation du texte GET READY !
+    if (hero.isProtected && gameState.status !== 'gameOver') {
+      let radius = window.innerWidth >= 1024 ? 75 : 55; // Rayon adapté à la taille de l'écran
+      ctx.strokeStyle = 'yellow'; ctx.lineWidth = 2; ctx.beginPath(); 
+      ctx.arc(hero.x + (gameState.playerWidth / 2), hero.y + (gameState.playerHeight / 2), radius, 0, 2 * Math.PI); ctx.stroke();
+      
+      if (vars.fontSize > 31) vars.fontSize -= 2; ctx.font = `${vars.fontSize}px Comic Sans MS`; ctx.fillStyle = "yellow"; ctx.textAlign = 'center'; 
+      ctx.fillText(`GET READY !`, hero.x + (gameState.playerWidth / 2), hero.y - 20);
+    } else { vars.fontSize = 150; }
+  } else {
+    // Animation frame par frame de la destruction du joueur (Taille proportionnelle)
+    let size = window.innerWidth >= 1024 ? 110 : 70;
+    vars.accudeltaTime += gameState.dt; 
+    ctx.drawImage(assets.explodeRunBtn, vars.heroSpriteExplodeX, 0, 95, 96, hero.x, hero.y, size, size);
+    
+    if (vars.accudeltaTime > 0.1) {
+      vars.spriteExplodeCountCurrentFrame++; 
+      vars.heroSpriteExplodeX += 95; 
+      vars.accudeltaTime = 0;
+      
+      if (vars.spriteExplodeCountCurrentFrame > 12) {
+        vars.heroSpriteExplodeX = 0; 
+        vars.spriteExplodeCountCurrentFrame = 1; 
+        hero.isExploding = false; // Arrête la boucle de destruction
+        
+        // --- COPIER / COLLER ICI : LOGIQUE DE FIN DE PARTIE CORRIGÉE AVEC LE HIGH SCORE ---
+        if (gameState.playerHp <= 0) { 
+          gameState.playerHp = 0; 
+          gameState.status = 'gameOver'; // Déclenche l'écran de défaite définitif
+          
+          // Sauvegarde automatique du record si le score actuel bat l'ancien record
+          if (gameState.score > gameState.highScore) {
+            gameState.highScore = gameState.score;
+            localStorage.setItem("spaceShooterHighScore", gameState.highScore);
+            console.log("Nouveau record enregistré : " + gameState.highScore);
+          }
+        } else { 
+          // S'il reste des vies, réapparition sécurisée au centre à la hauteur corrigée
+          hero.x = (canvas.width - gameState.playerWidth) / 2; 
+          hero.y = canvas.height - gameState.playerHeight - 30;
+          hero.isProtected = true;
+          setTimeout(() => hero.isProtected = false, 3000);
+        }
+      }
+    }
+  }
+}
+
+// 2. Entrées et Environnement
+// controls.js, sound.js et stars.js
 
 const inputs = {
   keyLeft: false,
@@ -254,6 +451,9 @@ function initControls() {
   });
 }
 
+// 2. Entrées et Environnement
+// controls.js, sound.js et stars.js
+
 // ======================================================================
 // MODULE AUDIO RETRO (SYNTHÉTISEUR ET MIXAGE SECURISE MOBILE ATTÉNUÉ)
 // ======================================================================
@@ -423,6 +623,9 @@ function playPlayerExplosionSound() {
   bassOsc.start(now); bassOsc.stop(now + duration);
 }
 
+// 2. Entrées et Environnement
+// controls.js, sound.js et stars.js
+
 let stars = [];
 
 function initStars(count = 100) {
@@ -440,6 +643,9 @@ function drawStars() {
   stars.forEach(s => ctx.fillRect(s.x, s.y, 1, 1));
 }
 
+// 3. Entités et Physique
+// laser.js, enemy.js, collisions.js et ui.js
+
 class Laser {
   constructor(x, y) {
     this.x = x;
@@ -451,6 +657,9 @@ class Laser {
     this.y -= Math.floor(this.speed * gameState.dt);
   }
 }
+
+// 3. Entités et Physique
+// laser.js, enemy.js, collisions.js et ui.js
 
 // ======================================================================
 // CLASSE ENNEMI (LOGIQUE UNIQUE ET IA DES VAISSEAUX)
@@ -531,6 +740,9 @@ class Enemy {
   }
  
 }
+
+// 3. Entités et Physique
+// laser.js, enemy.js, collisions.js et ui.js
 
 // Fonction globale de calcul géométrique des boîtes d'impacts actifs
 function checkCollisions(hero, onHeroHit) {
@@ -739,193 +951,8 @@ function drawPauseScreen() {
   ctx.restore();
 }
 
-// ======================================================================
-// 1. SPAWN DES VAGUES D'ENNEMIS (RÉPARTITION UNIFORME DE DÉPART)
-// ======================================================================
-function spawnInitialEnemies() {
-  gameState.enemies = []; // Remise à zéro complète du tableau global
-  
-  // Calcul de l'écart horizontal pour étaler les 10 ennemis sur toute la largeur
-  let spacing = (canvas.width - 120) / 9; 
-  let currentX = 50; // Marge de sécurité initiale sur le bord gauche                 
-  
-  for (let i = 0; i < 10; i++) {
-    // Génère des altitudes décalées en dents de scie pour créer un effet de flotte
-    let initialY = -400 - (i % 2 === 0 ? 150 : 0);
-    gameState.enemies.push(new Enemy(currentX, initialY));
-    currentX += spacing; // Décale le curseur vers la droite pour le prochain ennemi
-  }
-}
-
-// ======================================================================
-// 2. RÉINITIALISATION PHYSIQUE (RESTART APRÈS UN GAME OVER)
-// ======================================================================
-function resetGame(hero) {
-  gameState.enemyLasers = [];
-  gameState.score = 0; 
-  gameState.playerHp = gameState.maxHp; 
-  gameState.arrayLaser = []; 
-  gameState.deletedEnemiesPosX = [];
-  
-  spawnInitialEnemies(); // Recrée une nouvelle flotte d'ennemis propre
-  
-  // Recentrage du vaisseau par rapport à la largeur active de l'écran (PC ou Mobile)
-  hero.x = (canvas.width - gameState.playerWidth) / 2; 
-  
-  // Hauteur de sécurité remuée pour laisser de l'espace en bas de l'écran
-  hero.y = canvas.height - gameState.playerHeight - 30;
-  
-  hero.isExploding = false; 
-  hero.isProtected = true; // Réarme temporairement le bouclier protecteur jaune
-  anim.fontSize = 150;     // Réinitialise la taille du texte d'effet GET READY !
-  
-  // Supprime l'immunité du bouclier après 3 secondes de jeu
-  setTimeout(() => hero.isProtected = false, 3000);
-  gameState.status = 'start'; // Relance le moteur de combat actif
-}
-
-// ======================================================================
-// 3. RENDU GRAPHISME DE L'EXPLOSION DU BOUTON ACCUEIL START
-// ======================================================================
-function drawBoutonExplosion(vars) {
-  vars.accudeltaTime += gameState.dt; // Accumule le temps écoulé
-  // Dessine la frame actuelle de l'explosion du bouton d'accueil
-  ctx.drawImage(assets.explodeRunBtn, vars.spriteExplodeX, 0, 95, 96, vars.explodeX, vars.explodeY, 200, 200);
-  
-  // Cadence d'animation : change de sprite toutes les 0.05 secondes
-  if (vars.accudeltaTime > 0.05) { 
-    vars.spriteExplodeX += 95; 
-    vars.accudeltaTime = 0; 
-    // Si on dépasse la fin de la feuille de sprites (1172px), on arrête l'animation et on démarre le jeu
-    if (vars.spriteExplodeX > 1172) { 
-      vars.drawExplodeRun = false; 
-      gameState.status = 'start'; 
-      vars.spriteExplodeX = 0; 
-    } 
-  }
-}
-
-// ======================================================================
-// 4. RENDU DE LA FLOTTE ENNEMIE ET DE LEURS PROJECTILES DYNAMIQUES
-// ======================================================================
-function drawEnemiesAndTheirLasers() {
-  // Dessin des extraterrestres vivants à leur échelle active (35x50 ou 55x80)
-  gameState.enemies.forEach(en => { 
-    if (!en.isExploding) ctx.drawImage(assets.imgEnemy, 0, 0, 134, 199, en.x, en.y, gameState.enemyWidth, gameState.enemyHeight); 
-  });
-  
-  // Animation frame par frame de l'explosion des cibles touchées par le joueur
-  for (let i = gameState.enemies.length - 1; i >= 0; i--) {
-    let en = gameState.enemies[i];
-    if (en.isExploding) {
-      en.accudeltaTime += gameState.dt; 
-      ctx.drawImage(assets.explodeRunBtn, en.spriteExplodeX, 0, en.spriteExplodeSingleFrameWidth, 96, en.x, en.y, gameState.enemyWidth + 20, gameState.enemyWidth + 20);
-      
-      if (en.accudeltaTime > en.spriteExplodeSpeedFrame) {
-        en.spriteExplodeCountCurrentFrame++; 
-        en.spriteExplodeX += en.spriteExplodeSingleFrameWidth; 
-        en.accudeltaTime = 0;
-        
-        // Dès que l'explosion se termine, on retire l'ennemi. Ses lasers ne disparaissent plus !
-        if (en.spriteExplodeCountCurrentFrame > en.spriteExplodeTotFrame) { 
-          gameState.deletedEnemiesPosX.push(en.x); 
-          gameState.enemies.splice(i, 1); 
-        }
-      }
-    }
-  }
-  
-  // CORRECTION RENDU : Dessin des lasers ennemis globaux et indépendants
-  let lW = window.innerWidth >= 1024 ? 30 : 21;
-  let lH = window.innerWidth >= 1024 ? 50 : 36;
-  gameState.enemyLasers.forEach(l => { 
-    ctx.drawImage(assets.imgEnemyLaser, 210, 310, 60, 90, l.x, l.y, lW, lH); 
-  });
-}
-
-// ======================================================================
-// 5. RENDU DU HÉROS AVEC LOGIQUE D'INCLINAISON ET ZOOMS PROPORTIONNELS
-// ======================================================================
-function drawPlayerAndShield(hero, vars) {
-  if (!hero.isExploding) {
-    if (hero.x !== undefined && hero.y !== undefined && gameState.status !== 'gameOver') {
-      
-      let currentSpaceshipImg = assets.spaceship; 
-      
-      // Configuration par défaut de la taille de dessin (100% de l'échelle calculée)
-      let drawWidth = gameState.playerWidth;
-      let drawHeight = gameState.playerHeight;
-      let offsetX = 0;
-      let offsetY = 0;
-
-      // CORRECTION DU RÉTRÉCISSEMENT : Si on tourne, on applique un bonus de zoom de 30%
-      // pour compenser le vide transparent présent dans vos fichiers d'images d'inclinaison.
-      if (inputs.keyLeft) {
-        currentSpaceshipImg = assets.spaceshipLeft;
-        drawWidth = gameState.playerWidth * 1.3;
-        drawHeight = gameState.playerHeight * 1.3;
-        // On décale de quelques pixels pour que le pivotement reste bien centré sur l'axe du vaisseau
-        offsetX = -(gameState.playerWidth * 0.15);
-        offsetY = -(gameState.playerHeight * 0.15);
-      } else if (inputs.keyRight) {
-        currentSpaceshipImg = assets.spaceshipRight;
-        drawWidth = gameState.playerWidth * 1.3;
-        drawHeight = gameState.playerHeight * 1.3;
-        offsetX = -(gameState.playerWidth * 0.15);
-        offsetY = -(gameState.playerHeight * 0.15);
-      }
-      
-      // Dessin automatique sans coupure avec compensation de zoom dynamique
-      ctx.drawImage(currentSpaceshipImg, hero.x + offsetX, hero.y + offsetY, drawWidth, drawHeight);
-    }
-    
-    // Rendu visuel du cercle de bouclier jaune et animation du texte GET READY !
-    if (hero.isProtected && gameState.status !== 'gameOver') {
-      let radius = window.innerWidth >= 1024 ? 75 : 55; // Rayon adapté à la taille de l'écran
-      ctx.strokeStyle = 'yellow'; ctx.lineWidth = 2; ctx.beginPath(); 
-      ctx.arc(hero.x + (gameState.playerWidth / 2), hero.y + (gameState.playerHeight / 2), radius, 0, 2 * Math.PI); ctx.stroke();
-      
-      if (vars.fontSize > 31) vars.fontSize -= 2; ctx.font = `${vars.fontSize}px Comic Sans MS`; ctx.fillStyle = "yellow"; ctx.textAlign = 'center'; 
-      ctx.fillText(`GET READY !`, hero.x + (gameState.playerWidth / 2), hero.y - 20);
-    } else { vars.fontSize = 150; }
-  } else {
-    // Animation frame par frame de la destruction du joueur (Taille proportionnelle)
-    let size = window.innerWidth >= 1024 ? 110 : 70;
-    vars.accudeltaTime += gameState.dt; 
-    ctx.drawImage(assets.explodeRunBtn, vars.heroSpriteExplodeX, 0, 95, 96, hero.x, hero.y, size, size);
-    
-    if (vars.accudeltaTime > 0.1) {
-      vars.spriteExplodeCountCurrentFrame++; 
-      vars.heroSpriteExplodeX += 95; 
-      vars.accudeltaTime = 0;
-      
-      if (vars.spriteExplodeCountCurrentFrame > 12) {
-        vars.heroSpriteExplodeX = 0; 
-        vars.spriteExplodeCountCurrentFrame = 1; 
-        hero.isExploding = false; // Arrête la boucle de destruction
-        
-        // --- COPIER / COLLER ICI : LOGIQUE DE FIN DE PARTIE CORRIGÉE AVEC LE HIGH SCORE ---
-        if (gameState.playerHp <= 0) { 
-          gameState.playerHp = 0; 
-          gameState.status = 'gameOver'; // Déclenche l'écran de défaite définitif
-          
-          // Sauvegarde automatique du record si le score actuel bat l'ancien record
-          if (gameState.score > gameState.highScore) {
-            gameState.highScore = gameState.score;
-            localStorage.setItem("spaceShooterHighScore", gameState.highScore);
-            console.log("Nouveau record enregistré : " + gameState.highScore);
-          }
-        } else { 
-          // S'il reste des vies, réapparition sécurisée au centre à la hauteur corrigée
-          hero.x = (canvas.width - gameState.playerWidth) / 2; 
-          hero.y = canvas.height - gameState.playerHeight - 30;
-          hero.isProtected = true;
-          setTimeout(() => hero.isProtected = false, 3000);
-        }
-      }
-    }
-  }
-}
+// 4. Cœur du jeu (Boucle principale)
+// game.js
 
 // ======================================================================
 // 1. CONFIGURATION INITIALE ET COMPOSANTS DU JEU
