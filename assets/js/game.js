@@ -1030,6 +1030,9 @@ class PowerUp {
 function update() {
   if (gameState.status === 'gameOver') return;
   if (gameState.isPaused) return;
+
+  // 1. ANCHOR ANIMATION : On mémorise la position X exacte du vaisseau AVANT les mouvements
+  let ancienX = hero.x; 
   
   // Déplacement horizontal du joueur (Clavier PC ou Tactile Smartphone via cible relative)
   if (!hero.isExploding) {
@@ -1046,9 +1049,9 @@ function update() {
       if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
     }
     
-    // CORRECTION HAUTEUR : Maintient la hauteur de sécurité remontée à -50 pour libérer le pouce
-    if (hero.y > window.innerHeight - gameState.playerHeight - 50) { 
-      hero.y = window.innerHeight - gameState.playerHeight - 50;     
+    // CORRECTION HAUTEUR : Maintient la hauteur de sécurité remontée à -60 pour l'iPhone 8
+    if (hero.y > window.innerHeight - gameState.playerHeight - 60) { 
+      hero.y = window.innerHeight - gameState.playerHeight - 60;     
     }
     
     // ======================================================================
@@ -1092,14 +1095,13 @@ function update() {
 
     let currentTicks = performance.now();
     
-    // 5000 millisecondes = 5 secondes strictes
     if (currentTicks - gameState.lastPowerUpSpawnTime >= 5000) {
       let spawnX = getRandom(60, canvas.width - 60);
       gameState.powerUps.push(new PowerUp(spawnX, -40));
-      gameState.lastPowerUpSpawnTime = currentTicks; // Relance le chrono pour les prochaines 5s
+      gameState.lastPowerUpSpawnTime = currentTicks; 
     }
   } else {
-    // Force la réinitialisation tant qu'on n'a pas 5000 points
+    // Si on retombe sous 5000 pts (reset de partie), le chrono se coupe instantanément
     gameState.lastPowerUpSpawnTime = 0;
   }
 
@@ -1115,7 +1117,6 @@ function update() {
       continue;
     }
 
-    // Collision avec le Power-Up
     if (!hero.isExploding &&
         hero.x < p.x + p.width &&
         hero.x + gameState.playerWidth > p.x &&
@@ -1138,12 +1139,12 @@ function update() {
   for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
 
   // ======================================================================
-  // --- MISE À JOUR DES LASERS ENNEMIS (Vitesse bloquée jusqu'à 5000 pts) ---
+  // --- MISE À ZONE DES LASERS ENNEMIS (Dynamique en temps réel) ---
   // ======================================================================
   if (gameState.status === 'start') {
     let currentDifficultyBonus = 0;
 
-    // L'accélération ne se déclenche qu'au-dessus de 5000 points
+    // PROTECTION ET SYNCHRO : Si le score repasse sous 5000 (reset), la vitesse redevient calme à 175 !
     if (gameState.score >= 5000) {
       let pointsAuDela = gameState.score - 5000;
       currentDifficultyBonus = Math.floor(pointsAuDela / 1000) * 20;
@@ -1189,7 +1190,21 @@ function update() {
       gameState.powerUps = [];           
       gameState.lastPowerUpSpawnTime = 0; 
     }); 
-  }  
+  }
+
+  // ======================================================================
+  // GESTION DE L'INCLINAISON DES AILES AUTOMATIQUE (PC + IPHONE)
+  // ======================================================================
+  // On calcule la différence de déplacement réelle sur cette image de jeu
+  let mouvementReelX = hero.x - ancienX;
+
+  if (mouvementReelX > 0.5) {
+    hero.direction = 'right'; // Le vaisseau bouge à droite -> ailes tournées à droite
+  } else if (mouvementReelX < -0.5) {
+    hero.direction = 'left';  // Le vaisseau bouge à gauche -> ailes tournées à gauche
+  } else {
+    hero.direction = 'flat';  // Le vaisseau ne bouge plus -> ailes à plat
+  }
 }
 
 // 3. Entités et Physique
@@ -1200,24 +1215,47 @@ function update() {
 // ______________________________________________________________________
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height); 
-  drawStars(); 
+  drawStars();  
   
   // ======================================================================
-  // DESSIN DES POWER-UPS (Le fameux carré bonus "P")
+  // DESSIN DU POWER-UP : CHÂSSIS SCI-FI AVEC BORDURE CYAN CLIGNOTANTE
   // ======================================================================
   gameState.powerUps.forEach(p => {
-    ctx.fillStyle = "red";       // Couleur rouge pour attirer l'œil
-    ctx.shadowColor = "orange";
-    ctx.shadowBlur = 15;         // Effet de halo néon lumineux
-    ctx.fillRect(p.x, p.y, p.width, p.height);
+    ctx.save();
     
-    // On écrit la lettre "P" (pour Power-up) bien au centre du carré
-    ctx.fillStyle = "white";
-    ctx.font = "bold 16px 'Courier New', monospace";
-    ctx.fillText("P", p.x + 10, p.y + 21);
+    // CALCUL DU CLIGNOTEMENT REPRÉSENTANT L'ÉNERGIE (Varie de 0.2 à 1.0 en continu)
+    let pulseOpacity = 0.6 + Math.sin(performance.now() / 100) * 0.4;
     
-    // Très important : on coupe l'effet d'ombre pour les prochains dessins
-    ctx.shadowBlur = 0;
+    // 1. LE CHÂSSIS DU RECEPTACLE (Boîtier gris acier avec néon cyan clignotant)
+    ctx.fillStyle = "#1c2326";       // Gris métallique foncé
+    ctx.strokeStyle = `rgba(0, 255, 255, ${pulseOpacity})`; // Bordure clignotante
+    ctx.lineWidth = 2;
+    
+    // Le halo lumineux suit le clignotement pour un effet visuel pro
+    ctx.shadowColor = "#00ffff";
+    ctx.shadowBlur = 4 + (pulseOpacity * 10); 
+    
+    ctx.beginPath();
+    ctx.rect(p.x, p.y, p.width, p.height);
+    ctx.fill();
+    ctx.stroke();
+    
+    // 2. LE RECYCLAGE DES SPRITES (Vos deux tirs lasers miniatures)
+    // Laser miniature Gauche
+    ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 5, p.y + 4, 8, 22); 
+    // Laser miniature Droit
+    ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 17, p.y + 4, 8, 22); 
+    
+    // 3. LA DIODE ÉLECTRONIQUE (Un point vert qui clignote à l'inverse de la bordure)
+    let diodeOpacity = 0.6 + Math.cos(performance.now() / 100) * 0.4;
+    ctx.fillStyle = `rgba(0, 255, 0, ${diodeOpacity})`;
+    ctx.shadowColor = "#00ff00";
+    ctx.shadowBlur = diodeOpacity * 6;
+    ctx.beginPath();
+    ctx.arc(p.x + p.width / 2, p.y + 24, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
   });
 
   if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
@@ -1245,7 +1283,7 @@ const divRun = document.getElementById("div_run");
 // Création du héros calé au centre avec la hauteur de sécurité remontée (-95)
 const hero = { 
   x: window.innerWidth / 2 - (gameState.playerWidth / 2), 
-  y: window.innerHeight - 115, 
+  y: window.innerHeight - 125, 
   speed: 500, 
   isExploding: false, 
   isProtected: false 
@@ -1281,14 +1319,14 @@ window.addEventListener('DOMContentLoaded', () => {
 assets.spaceship.onload = () => { 
   max_x = (canvas.width - gameState.playerWidth); 
   hero.x = ((canvas.width - gameState.playerWidth) / 2); 
-  hero.y = (canvas.height - gameState.playerHeight - 50); // Sécurité remontée à -50
+  hero.y = (canvas.height - gameState.playerHeight - 60); // Sécurité remontée à -60
 };
 
 // Ajustement en temps réel lors du redimensionnement de l'écran (Ex: Fermeture inspecteur)
 window.addEventListener('resize', () => {
   max_x = (canvas.width - gameState.playerWidth);
   if (gameState.status === 'notYetStarted') { hero.x = ((canvas.width - gameState.playerWidth) / 2); }
-  hero.y = (canvas.height - gameState.playerHeight - 50); // Maintient la hauteur de sécurité
+  hero.y = (canvas.height - gameState.playerHeight - 60); // Maintient la hauteur de sécurité
 });
 
 // ======================================================================
