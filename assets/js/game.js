@@ -447,7 +447,7 @@ function initControls() {
     }
   });
 
-  // ======================================================================
+   // ======================================================================
   // C. SUIVI DU MOUVEMENT (PC SURVOL SOURIS & MOBILE GLISSEMENT DOIGT)
   // ======================================================================
   window.addEventListener("pointermove", e => {
@@ -456,6 +456,10 @@ function initControls() {
 
     // 1. Si un doigt est posé et glisse en plein jeu, on met à jour la position cible X du vaisseau
     if (gameState.status === 'start' && !gameState.isPaused && e.pointerId === activePointerId) {
+      
+      // PROTECTION MOBILE : Force le smartphone à ignorer les gestes système de l'OS pendant qu'on pilote
+      if (e.cancelable) e.preventDefault(); 
+      
       inputs.touchX = e.clientX;
     }
 
@@ -485,6 +489,7 @@ function initControls() {
       canvas.style.cursor = "default";
     }
   });
+
 }
 
 // 2. Entrées et Environnement
