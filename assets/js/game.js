@@ -279,7 +279,9 @@ const inputs = {
   keyLeft: false,
   keyRight: false,
   keySpace: false,
-  touchX: null // Ajout pour stocker la coordonnée X du doigt/pointeur
+  touchX: null,
+  startX: 0,   // 👈 AJOUTÉ : Position d'origine du vaisseau au clic
+  targetX: null // 👈 AJOUTÉ : Position calculée que le vaisseau doit atteindre
 };
 
 // On retire les anciennes variables touchLeftId et touchRightId devenues inutiles
@@ -384,11 +386,10 @@ function initControls() {
     if (e.key == "ArrowLeft") inputs.keyLeft = false;
   });
 
-  // ======================================================================
+    // ======================================================================
   // B. INTERCEPTION DES CLICS ET TACTILES POINTERDOWN (PC / MOBILE)
   // ======================================================================
   window.addEventListener("pointerdown", e => {
-    // CORRECTION : On retire "div_run" d'ici pour autoriser le tactile sur le bouton START
     if (e.target.id === "div_sound" || e.target.id === "sound_text") return;
 
     let screenCenter = window.innerWidth / 2;
@@ -419,21 +420,21 @@ function initControls() {
       return; 
     }
 
-    // --- GESTION DU PILOTAGE & TIR TACTILE EN JEU OU ACCUEIL ---
+    // --- CORRECTION DÉPLACEMENT RELATIF GLOBAAL ---
     if (gameState.status !== 'gameOver' && !gameState.isPaused) {
       activePointerId = e.pointerId;
-      inputs.touchX = e.clientX; 
-
-      // Déclenche le tir automatique au premier contact !
-      inputs.keySpace = true; 
+      inputs.touchX = e.clientX;   // On mémorise le point de départ du doigt
+      inputs.startX = hero.x;       // On mémorise la position actuelle du vaisseau
+      inputs.targetX = hero.x;      // Au clic initial, la cible est le vaisseau lui-même
+      inputs.keySpace = true;       // Déclenche le tir automatique
     }
   });
 
-
   window.addEventListener("pointerup", e => {
     if (e.pointerId === activePointerId) {
-      inputs.touchX = null; // Le joueur lève le doigt, on arrête de suivre la position
-      inputs.keySpace = false; // On arrête de tirer
+      inputs.touchX = null;
+      inputs.targetX = null;        // On nettoie la cible relative
+      inputs.keySpace = false; 
       activePointerId = null;
     }
   });
@@ -441,6 +442,7 @@ function initControls() {
   window.addEventListener("pointercancel", e => {
     if (e.pointerId === activePointerId) {
       inputs.touchX = null;
+      inputs.targetX = null;
       inputs.keySpace = false;
       activePointerId = null;
     }
@@ -453,13 +455,15 @@ function initControls() {
     let screenCenter = window.innerWidth / 2;
     let screenMiddleY = window.innerHeight / 2;
 
-    // 1. Si un doigt est posé et glisse en plein jeu, on met à jour la position cible X du vaisseau
+    // 1. Si un doigt est posé et glisse (Mouvement relatif)
     if (gameState.status !== 'gameOver' && !gameState.isPaused && e.pointerId === activePointerId) {
-      
-      // PROTECTION MOBILE : Force le smartphone à ignorer les gestes système de l'OS pendant qu'on pilote
       if (e.cancelable) e.preventDefault(); 
       
-      inputs.touchX = e.clientX;
+      // On calcule l'écart parcouru par le doigt depuis le clic initial
+      let deltaX = e.clientX - inputs.touchX;
+      
+      // La nouvelle cible du vaisseau est sa position d'origine + le mouvement du doigt
+      inputs.targetX = inputs.startX + deltaX;
     }
 
     // 2. Gestion visuelle des curseurs de survol de la pause (Uniquement sur PC)
@@ -488,6 +492,22 @@ function initControls() {
       canvas.style.cursor = "default";
     }
   });
+
+  window.addEventListener("pointerup", e => {
+    if (e.pointerId === activePointerId) {
+      inputs.touchX = null; // Le joueur lève le doigt, on arrête de suivre la position
+      inputs.keySpace = false; // On arrête de tirer
+      activePointerId = null;
+    }
+  });
+
+  window.addEventListener("pointercancel", e => {
+    if (e.pointerId === activePointerId) {
+      inputs.touchX = null;
+      inputs.keySpace = false;
+      activePointerId = null;
+    }
+  });  
 
 }
 
@@ -1003,13 +1023,15 @@ function checkCollisions(hero, onHeroHit) {
 function update() {
   if (gameState.status === 'gameOver') return;
   if (gameState.isPaused) return;
-
-  // Déplacement horizontal du joueur (Clavier PC ou Tactile Smartphone via touchX)
+  
+  // Déplacement horizontal du joueur (Clavier PC ou Tactile Smartphone via cible relative)
   if (!hero.isExploding) {
-    if (inputs.touchX !== null) {
-      // PILOTAGE MOBILE/SOURIS FLUIDE : Le vaisseau suit le doigt horizontalement
-      let targetX = inputs.touchX - (gameState.playerWidth / 2);
-      hero.x += (targetX - hero.x) * 0.2; // Suivi amorti (Lerp)
+    if (inputs.touchX !== null && inputs.targetX !== null) {
+      // Le vaisseau glisse en douceur vers la cible calculée par le touchpad
+      // On utilise 0.15 pour un amorti (Lerp) très agréable et pro
+      hero.x += (inputs.targetX - hero.x) * 0.15; 
+      
+      // Sécurité stricte des bordures physiques de l'écran
       if (hero.x < 0) hero.x = 0;
       if (hero.x > max_x) hero.x = max_x;
     } else {
