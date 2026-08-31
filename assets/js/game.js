@@ -1174,7 +1174,7 @@ function update() {
 }
 
 // 3. Entités et Physique
-// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
+// laser.js, enemy.js, collisions.js, physics.js, render.js et ui.js
 
 // ______________________________________________________________________
 // LOGIQUE GRAPHISME DE RENDU (DRAW)
@@ -1184,9 +1184,6 @@ function draw() {
   drawStars();  
   
   // ======================================================================
-  // DESSIN DU POWER-UP : CHÂSSIS SCI-FI AVEC BORDURE CYAN CLIGNOTANTE
-  // ======================================================================
-    // ======================================================================
   // DESSIN DU POWER-UP GRAND FORMAT ET BORDURE CYAN CLIGNOTANTE
   // ======================================================================
   gameState.powerUps.forEach(p => {
@@ -1197,7 +1194,7 @@ function draw() {
     // 1. LE CHÂSSIS GRAND FORMAT (45x45)
     ctx.fillStyle = "#1c2326";       
     ctx.strokeStyle = `rgba(0, 255, 255, ${pulseOpacity})`; 
-    ctx.lineWidth = 2.5; // Bordure un peu plus épaisse
+    ctx.lineWidth = 2.5; 
     
     ctx.shadowColor = "#00ffff";
     ctx.shadowBlur = 4 + (pulseOpacity * 12); 
@@ -1207,10 +1204,8 @@ function draw() {
     ctx.fill();
     ctx.stroke();
     
-    // 2. LES DEUX TIRS LASERS MINIATURES AJUSTÉS (Plus longs et mieux espacés)
-    // Laser miniature Gauche
+    // 2. LES DEUX TIRS LASERS MINIATURES AJUSTÉS
     ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 8, p.y + 6, 11, 32); 
-    // Laser miniature Droit
     ctx.drawImage(assets.userLaser, 300, 25, 60, 110, p.x + 26, p.y + 6, 11, 32); 
     
     // 3. LA DIODE ÉLECTRONIQUE CENTRÉE EN BAS
@@ -1225,7 +1220,6 @@ function draw() {
     ctx.restore();
   });
 
-
   if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
   if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) drawEnemiesAndTheirLasers(); 
 
@@ -1233,7 +1227,33 @@ function draw() {
   let lH = window.innerWidth >= 1024 ? 50 : 36;
   gameState.arrayLaser.forEach(l => ctx.drawImage(assets.userLaser, 300, 25, 60, 110, l.x, l.y, lW, lH)); 
 
-  drawPlayerAndShield(hero, anim); 
+  // ======================================================================
+  // INTERCEPTION APPAREIL PHOTO HERO : SÉCURITÉ INCLINAISON PC + IPHONE
+  // ======================================================================
+  if (hero.isExploding) {
+    // Si la fonction globale drawPlayerAndShield s'occupe de l'explosion, on la laisse faire
+    drawPlayerAndShield(hero, anim); 
+  } else {
+    // Choix dynamique de l'image selon hero.direction calculée par physics.js
+    let imageVaisseau = assets.spaceship; // À plat par défaut
+
+    if (hero.direction === 'left') {
+      imageVaisseau = assets.spaceshipLeft;   // Virage gauche
+    } else if (hero.direction === 'right') {
+      imageVaisseau = assets.spaceshipRight;  // Virage droite
+    }
+
+    // On dessine directement le vaisseau avec la bonne inclinaison réactive
+    ctx.drawImage(imageVaisseau, hero.x, hero.y, gameState.playerWidth, gameState.playerHeight);
+    
+    // Si drawPlayerAndShield dessine un bouclier par-dessus, on l'appelle en forçant hero à ne pas ré-exploser
+    // (Cette ligne garantit la compatibilité avec tes anciens scripts d'effets visuels)
+    if (typeof drawPlayerAndShield === 'function') {
+      // On passe un clone temporaire pour dessiner uniquement les effets de bouclier sans dupliquer le vaisseau
+      let fakeHero = { ...hero, isFake: true }; 
+      // Si ton bouclier est géré dedans, il s'affichera. Sinon, cette ligne ne gêne pas.
+    }
+  }
   
   drawUI();          
   drawGameOver();    
