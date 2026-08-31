@@ -780,73 +780,6 @@ class Enemy {
 // 3. Entités et Physique
 // laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
 
-// Fonction globale de calcul géométrique des boîtes d'impacts actifs
-function checkCollisions(hero, onHeroHit) {
-  if (gameState.status === 'gameOver') return;
-
-  // ==================================================================
-  // 1. COLLISIONS LIÉES AUX ENNEMIS (Boucle sur chaque vaisseau)
-  // ==================================================================
-  gameState.enemies.forEach(en => {
-    
-    // A. COLLISION : Lasers Joueur contre Vaisseau Ennemi
-    if (!en.isExploding) {
-      gameState.arrayLaser = gameState.arrayLaser.filter(laser => {
-        let hit = (laser.x >= en.x - 10) && 
-                  (laser.x <= en.x + gameState.enemyWidth + 10) && 
-                  (laser.y <= en.y + gameState.enemyHeight) && 
-                  (laser.y >= en.y);
-        if (hit) {
-          en.isExploding = true;
-          gameState.score += 100;
-          playExplosionSound(); 
-        }
-        return !hit;
-      });
-    }
-
-    // C. COLLISION : Corps à corps (Vaisseau contre Vaisseau)
-    if (!en.isExploding && !hero.isExploding && !hero.isProtected) {
-      if (hero.x <= en.x + gameState.enemyWidth && 
-          hero.x + gameState.playerWidth >= en.x && 
-          hero.y <= en.y + gameState.enemyHeight && 
-          hero.y + gameState.playerHeight >= en.y) {
-        en.isExploding = true;
-        onHeroHit();
-        playPlayerExplosionSound(); 
-      }
-    }
-  });
-
-  // ==================================================================
-  // 2. CORRECTION CRITIQUE (B) : Lasers Ennemis contre Vaisseau Joueur
-  // ==================================================================
-  // SORTI DE LA BOUCLE ENNEMIE : On utilise le tableau global autonome
-  if (gameState.enemyLasers && gameState.enemyLasers.length > 0) {
-    gameState.enemyLasers = gameState.enemyLasers.filter(l => {
-      let hitHero = false;
-
-      if (!hero.isExploding && !hero.isProtected) {
-        if ((l.x >= hero.x - 10) && 
-            (l.x <= hero.x + gameState.playerWidth) && 
-            (l.y <= hero.y + gameState.playerHeight) && 
-            (l.y >= hero.y)) {
-          
-          hitHero = true; // Le laser a percuté le joueur !
-          onHeroHit();    // Déclenche l'explosion du joueur et retire 1 HP
-          playPlayerExplosionSound(); 
-        }
-      }
-
-      // On ne garde dans le tableau que les lasers qui n'ont PAS touché le joueur
-      return !hitHero;
-    });
-  }
-}
-
-// 3. Entités et Physique
-// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
-
 // ======================================================================
 // 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE ET VIE)
 // ======================================================================
@@ -993,6 +926,73 @@ function drawPauseScreen() {
 // 3. Entités et Physique
 // laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
 
+// Fonction globale de calcul géométrique des boîtes d'impacts actifs
+function checkCollisions(hero, onHeroHit) {
+  if (gameState.status === 'gameOver') return;
+
+  // ==================================================================
+  // 1. COLLISIONS LIÉES AUX ENNEMIS (Boucle sur chaque vaisseau)
+  // ==================================================================
+  gameState.enemies.forEach(en => {
+    
+    // A. COLLISION : Lasers Joueur contre Vaisseau Ennemi
+    if (!en.isExploding) {
+      gameState.arrayLaser = gameState.arrayLaser.filter(laser => {
+        let hit = (laser.x >= en.x - 10) && 
+                  (laser.x <= en.x + gameState.enemyWidth + 10) && 
+                  (laser.y <= en.y + gameState.enemyHeight) && 
+                  (laser.y >= en.y);
+        if (hit) {
+          en.isExploding = true;
+          gameState.score += 100;
+          playExplosionSound(); 
+        }
+        return !hit;
+      });
+    }
+
+    // C. COLLISION : Corps à corps (Vaisseau contre Vaisseau)
+    if (!en.isExploding && !hero.isExploding && !hero.isProtected) {
+      if (hero.x <= en.x + gameState.enemyWidth && 
+          hero.x + gameState.playerWidth >= en.x && 
+          hero.y <= en.y + gameState.enemyHeight && 
+          hero.y + gameState.playerHeight >= en.y) {
+        en.isExploding = true;
+        onHeroHit();
+        playPlayerExplosionSound(); 
+      }
+    }
+  });
+
+  // ==================================================================
+  // 2. CORRECTION CRITIQUE (B) : Lasers Ennemis contre Vaisseau Joueur
+  // ==================================================================
+  // SORTI DE LA BOUCLE ENNEMIE : On utilise le tableau global autonome
+  if (gameState.enemyLasers && gameState.enemyLasers.length > 0) {
+    gameState.enemyLasers = gameState.enemyLasers.filter(l => {
+      let hitHero = false;
+
+      if (!hero.isExploding && !hero.isProtected) {
+        if ((l.x >= hero.x - 10) && 
+            (l.x <= hero.x + gameState.playerWidth) && 
+            (l.y <= hero.y + gameState.playerHeight) && 
+            (l.y >= hero.y)) {
+          
+          hitHero = true; // Le laser a percuté le joueur !
+          onHeroHit();    // Déclenche l'explosion du joueur et retire 1 HP
+          playPlayerExplosionSound(); 
+        }
+      }
+
+      // On ne garde dans le tableau que les lasers qui n'ont PAS touché le joueur
+      return !hitHero;
+    });
+  }
+}
+
+// 3. Entités et Physique
+// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
+
 //______________________________________________________________________
 // LOGIQUE PHYSIQUE DU JEU (UPDATE)
 // ______________________________________________________________________
@@ -1127,10 +1127,16 @@ const anim = {
 // Déclarations des limites de bords et du cooldown de l'arme du joueur
 let max_x = window.innerWidth - gameState.playerWidth, lastHeroFireTime = -200, coolDownHeroFireTime = 200;
 
-// Lancement immédiat des modules de départ
-initStars(100); 
-initControls(); 
-spawnInitialEnemies();
+// Lancement sécurisé une fois que TOUS les scripts séparés sont liés par le navigateur
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof initStars === 'function') initStars(100); 
+  if (typeof initControls === 'function') initControls(); 
+  if (typeof spawnInitialEnemies === 'function') spawnInitialEnemies();
+  
+  // DÉMARRAGE SÉCURISÉ DE LA BOUCLE : On lance le jeu ici !
+  window.requestAnimationFrame(gameLoop);
+});
+
 
 // Recalcul précis de la position de sécurité dès que l'image du vaisseau est chargée
 assets.spaceship.onload = () => { 
@@ -1232,4 +1238,3 @@ function gameLoop(hrt) {
   }
   update(); draw(); window.requestAnimationFrame(gameLoop); 
 }
-window.requestAnimationFrame(gameLoop);
