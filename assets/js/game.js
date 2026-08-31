@@ -1020,9 +1020,9 @@ function update() {
       if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
     }
     
-    // CORRECTION HAUTEUR : Maintient la hauteur de sécurité remontée à -60 pour l'iPhone 8
-    if (hero.y > window.innerHeight - gameState.playerHeight - 60) { 
-      hero.y = window.innerHeight - gameState.playerHeight - 60;     
+    // CORRECTION HAUTEUR : Maintient la hauteur de sécurité remontée à -65 pour l'iPhone 8
+    if (hero.y > window.innerHeight - gameState.playerHeight - 65) { 
+      hero.y = window.innerHeight - gameState.playerHeight - 65;     
     }
     
     // ======================================================================
@@ -1228,41 +1228,37 @@ function draw() {
   gameState.arrayLaser.forEach(l => ctx.drawImage(assets.userLaser, 300, 25, 60, 110, l.x, l.y, lW, lH)); 
 
   // ======================================================================
-  // INTERCEPTION APPAREIL PHOTO HERO : SÉCURITÉ INCLINAISON ET TAILLE RESPONSIVE
+  // RESTAURATION SHIELD GET READY + GESTION DES VIRAGES ET TAILLES AUX HORMONES
   // ======================================================================
-  if (hero.isExploding) {
-    drawPlayerAndShield(hero, anim); 
-  } else {
-    let imageVaisseau = assets.spaceship; // À plat par défaut
-    
-    // Variables dynamiques ajustées pour compenser le vide transparent
-    let finalWidth = gameState.playerWidth;
-    let finalHeight = gameState.playerHeight;
-    let finalX = hero.x;
+  // On sauvegarde l'image d'origine pour ne pas casser la mémoire du jeu
+  let originalImage = assets.spaceship;
+  let originalWidth = gameState.playerWidth;
+  let originalHeight = gameState.playerHeight;
+  let originalX = hero.x;
 
+  if (!hero.isExploding) {
     if (hero.direction === 'left') {
-      imageVaisseau = assets.spaceshipLeft;   // Virage gauche
-      // On triche et on booste la taille de 15% pour contrer le rétrécissement
-      finalWidth = Math.floor(gameState.playerWidth * 1.35);
-      finalHeight = Math.floor(gameState.playerHeight * 1.35);
-      // Réaligne le centre pour éviter les secousses visuelles
-      finalX = hero.x - Math.floor((finalWidth - gameState.playerWidth) / 2);
+      assets.spaceship = assets.spaceshipLeft; // Force ta fonction à utiliser le sprite gauche
+      gameState.playerWidth = Math.floor(originalWidth * 1.35);  // Modifie la taille pour ton dessin de 35%
+      gameState.playerHeight = Math.floor(originalHeight * 1.35);
+      hero.x = hero.x - Math.floor((gameState.playerWidth - originalWidth) / 2); // Ajuste l'axe
     } 
     else if (hero.direction === 'right') {
-      imageVaisseau = assets.spaceshipRight;  // Virage droite
-      // Même boost de 15% à droite
-      finalWidth = Math.floor(gameState.playerWidth * 1.35);
-      finalHeight = Math.floor(gameState.playerHeight * 1.35);
-      finalX = hero.x - Math.floor((finalWidth - gameState.playerWidth) / 2);
-    }
-
-    // Affiche le sprite à sa taille réelle compensée
-    ctx.drawImage(imageVaisseau, finalX, hero.y, finalWidth, finalHeight);
-    
-    if (typeof drawPlayerAndShield === 'function') {
-      let fakeHero = { ...hero, isFake: true }; 
+      assets.spaceship = assets.spaceshipRight; // Force ta fonction à utiliser le sprite droit
+      gameState.playerWidth = Math.floor(originalWidth * 1.35);  // Modifie la taille pour ton dessin de 35%
+      gameState.playerHeight = Math.floor(originalHeight * 1.35);
+      hero.x = hero.x - Math.floor((gameState.playerWidth - originalWidth) / 2); // Ajuste l'axe
     }
   }
+
+  // 🛡️ ON ENVOIE TON VRAI DESSIN D'ORIGINE (Il retrouve ses tirs, ses clignotements et son bouclier !)
+  drawPlayerAndShield(hero, anim); 
+
+  // TRÈS IMPORTANT : On remet les variables d'origine juste après le dessin pour ne pas casser la physique
+  assets.spaceship = originalImage;
+  gameState.playerWidth = originalWidth;
+  gameState.playerHeight = originalHeight;
+  hero.x = originalX;
   
   drawUI();          
   drawGameOver();    
@@ -1280,7 +1276,7 @@ const divRun = document.getElementById("div_run");
 // Création du héros calé au centre avec la hauteur de sécurité remontée (-95)
 const hero = { 
   x: window.innerWidth / 2 - (gameState.playerWidth / 2), 
-  y: window.innerHeight - 125, 
+  y: window.innerHeight - 130, 
   speed: 500, 
   isExploding: false, 
   isProtected: false 
@@ -1316,14 +1312,14 @@ window.addEventListener('DOMContentLoaded', () => {
 assets.spaceship.onload = () => { 
   max_x = (canvas.width - gameState.playerWidth); 
   hero.x = ((canvas.width - gameState.playerWidth) / 2); 
-  hero.y = (canvas.height - gameState.playerHeight - 60); // Sécurité remontée à -60
+  hero.y = (canvas.height - gameState.playerHeight - 65); // Sécurité remontée à -65
 };
 
 // Ajustement en temps réel lors du redimensionnement de l'écran (Ex: Fermeture inspecteur)
 window.addEventListener('resize', () => {
   max_x = (canvas.width - gameState.playerWidth);
   if (gameState.status === 'notYetStarted') { hero.x = ((canvas.width - gameState.playerWidth) / 2); }
-  hero.y = (canvas.height - gameState.playerHeight - 60); // Maintient la hauteur de sécurité
+  hero.y = (canvas.height - gameState.playerHeight - 65); // Maintient la hauteur de sécurité
 });
 
 // ======================================================================
