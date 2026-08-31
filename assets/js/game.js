@@ -1028,8 +1028,8 @@ function update() {
   if (!hero.isExploding) {
     if (inputs.touchX !== null && inputs.targetX !== null) {
       // Le vaisseau glisse en douceur vers la cible calculée par le touchpad
-      // On utilise 0.15 pour un amorti (Lerp) très agréable et pro
-      hero.x += (inputs.targetX - hero.x) * 0.15; 
+      // On utilise 0.35 pour un amorti (Lerp) très agréable et pro
+      hero.x += (inputs.targetX - hero.x) * 0.35; 
       
       // Sécurité stricte des bordures physiques de l'écran
       if (hero.x < 0) hero.x = 0;
