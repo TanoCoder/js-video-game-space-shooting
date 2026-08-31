@@ -1228,30 +1228,39 @@ function draw() {
   gameState.arrayLaser.forEach(l => ctx.drawImage(assets.userLaser, 300, 25, 60, 110, l.x, l.y, lW, lH)); 
 
   // ======================================================================
-  // INTERCEPTION APPAREIL PHOTO HERO : SÉCURITÉ INCLINAISON PC + IPHONE
+  // INTERCEPTION APPAREIL PHOTO HERO : SÉCURITÉ INCLINAISON ET TAILLE RESPONSIVE
   // ======================================================================
   if (hero.isExploding) {
-    // Si la fonction globale drawPlayerAndShield s'occupe de l'explosion, on la laisse faire
     drawPlayerAndShield(hero, anim); 
   } else {
-    // Choix dynamique de l'image selon hero.direction calculée par physics.js
     let imageVaisseau = assets.spaceship; // À plat par défaut
+    
+    // Variables dynamiques ajustées pour compenser le vide transparent
+    let finalWidth = gameState.playerWidth;
+    let finalHeight = gameState.playerHeight;
+    let finalX = hero.x;
 
     if (hero.direction === 'left') {
       imageVaisseau = assets.spaceshipLeft;   // Virage gauche
-    } else if (hero.direction === 'right') {
+      // On triche et on booste la taille de 15% pour contrer le rétrécissement
+      finalWidth = Math.floor(gameState.playerWidth * 1.15);
+      finalHeight = Math.floor(gameState.playerHeight * 1.15);
+      // Réaligne le centre pour éviter les secousses visuelles
+      finalX = hero.x - Math.floor((finalWidth - gameState.playerWidth) / 2);
+    } 
+    else if (hero.direction === 'right') {
       imageVaisseau = assets.spaceshipRight;  // Virage droite
+      // Même boost de 15% à droite
+      finalWidth = Math.floor(gameState.playerWidth * 1.15);
+      finalHeight = Math.floor(gameState.playerHeight * 1.15);
+      finalX = hero.x - Math.floor((finalWidth - gameState.playerWidth) / 2);
     }
 
-    // On dessine directement le vaisseau avec la bonne inclinaison réactive
-    ctx.drawImage(imageVaisseau, hero.x, hero.y, gameState.playerWidth, gameState.playerHeight);
+    // Affiche le sprite à sa taille réelle compensée
+    ctx.drawImage(imageVaisseau, finalX, hero.y, finalWidth, finalHeight);
     
-    // Si drawPlayerAndShield dessine un bouclier par-dessus, on l'appelle en forçant hero à ne pas ré-exploser
-    // (Cette ligne garantit la compatibilité avec tes anciens scripts d'effets visuels)
     if (typeof drawPlayerAndShield === 'function') {
-      // On passe un clone temporaire pour dessiner uniquement les effets de bouclier sans dupliquer le vaisseau
       let fakeHero = { ...hero, isFake: true }; 
-      // Si ton bouclier est géré dedans, il s'affichera. Sinon, cette ligne ne gêne pas.
     }
   }
   
