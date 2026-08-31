@@ -1243,16 +1243,16 @@ function draw() {
     if (hero.direction === 'left') {
       imageVaisseau = assets.spaceshipLeft;   // Virage gauche
       // On triche et on booste la taille de 15% pour contrer le rétrécissement
-      finalWidth = Math.floor(gameState.playerWidth * 1.15);
-      finalHeight = Math.floor(gameState.playerHeight * 1.15);
+      finalWidth = Math.floor(gameState.playerWidth * 1.35);
+      finalHeight = Math.floor(gameState.playerHeight * 1.35);
       // Réaligne le centre pour éviter les secousses visuelles
       finalX = hero.x - Math.floor((finalWidth - gameState.playerWidth) / 2);
     } 
     else if (hero.direction === 'right') {
       imageVaisseau = assets.spaceshipRight;  // Virage droite
       // Même boost de 15% à droite
-      finalWidth = Math.floor(gameState.playerWidth * 1.15);
-      finalHeight = Math.floor(gameState.playerHeight * 1.15);
+      finalWidth = Math.floor(gameState.playerWidth * 1.35);
+      finalHeight = Math.floor(gameState.playerHeight * 1.35);
       finalX = hero.x - Math.floor((finalWidth - gameState.playerWidth) / 2);
     }
 
