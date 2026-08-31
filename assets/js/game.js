@@ -326,10 +326,17 @@ function initControls() {
     lastTouchEnd = now;
   }, { passive: false });
 
+  // ======================================================================
+  // SÉCURITÉ SAFARI IPHONE : VERROUILLAGE SÉLECTION ET ZOOM MATÉRIEL
+  // ======================================================================
   const gameCanvas = document.getElementById("canvas");
   if (gameCanvas) {
-    gameCanvas.addEventListener("selectstart", e => e.preventDefault());
-    gameCanvas.addEventListener("contextmenu", e => e.preventDefault());
+    gameCanvas.style.webkitTapHighlightColor = "rgba(0,0,0,0)";
+    gameCanvas.style.webkitUserSelect = "none";
+    gameCanvas.style.outline = "none";
+
+    gameCanvas.addEventListener("contextmenu", e => e.preventDefault());    
+    
     gameCanvas.addEventListener("touchstart", e => {
       if (e.touches.length > 1) e.preventDefault(); 
     }, { passive: false });
