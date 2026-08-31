@@ -725,31 +725,24 @@ class Enemy {
   update(heroX, heroIsExploding, heroIsProtected) {
     if (this.isExploding) return;
 
-    // --- 1. LOGIQUE DE LA DIFFICULTÉ PROGRESSIVE (DESCENTE) ---
-    let currentDifficultyBonus = 0;
+    // --- 1. LOGIQUE MIROIR PAR PALIER DE 5000 POINTS (DESCENTE) ---
+    let tranche = Math.floor(gameState.score / 5000);
+    let dynamicSpeed = this.speed; // 175 par défaut (Mode Normal)
 
-    if (gameState.score >= 5000) {
-      let pointsAuDela = gameState.score - 5000;
-      currentDifficultyBonus = Math.floor(pointsAuDela / 1000) * 20;
+    if (tranche % 2 !== 0) {
+      dynamicSpeed = 350; // Mode RAPIDE forcé (entre 5000-9999, 15000-19999, etc.)
     }
 
-    let dynamicSpeed = this.speed + currentDifficultyBonus;
-    dynamicSpeed = Math.min(dynamicSpeed, 450);
     this.y += dynamicSpeed * gameState.dt;
 
-    // --- 2. INTELLIGENCE ARTIFICIELLE DE TIR (CADENCE CORRIGÉE) ---
+    // --- 2. INTELLIGENCE ARTIFICIELLE DE TIR (CADENCE MIROIR) ---
     if (this.y > 0 && !heroIsExploding) {
       
-      let shootDifficultyBonus = 0;
+      let shootChance = 0.005; // 0.5% de chance de base (Mode Normal)
       
-      // FIX CADENCE : L'IA ne tire plus vite QUE si le score en temps réel est au-dessus de 5000 !
-      if (gameState.score >= 5000) {
-        let pointsAuDela = gameState.score - 5000;
-        shootDifficultyBonus = Math.floor(pointsAuDela / 1000) * 0.001;
+      if (tranche % 2 !== 0) {
+        shootChance = 0.008; // Cadence boostée à 0.8% (Mode Rapide)
       }
-
-      // Si le score revient sous 5000 (partie suivante/mort), shootChance repasse instantanément à sa valeur calme (0.005)
-      let shootChance = 0.005 + shootDifficultyBonus;
       
       if (Math.random() < shootChance && gameState.enemyLasers.length < 6) {
         let laserSpawnX = this.x + (this.width / 2) - 10; 
@@ -1079,7 +1072,6 @@ function update() {
       gameState.lastPowerUpSpawnTime = currentTicks; 
     }
   } else {
-    // Si on retombe sous 5000 pts (reset de partie), le chrono se coupe instantanément
     gameState.lastPowerUpSpawnTime = 0;
   }
 
@@ -1117,19 +1109,19 @@ function update() {
   for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
 
   // ======================================================================
-  // --- MISE À ZONE DES LASERS ENNEMIS (Dynamique en temps réel) ---
+  // --- MISE À JOUR DES LASERS ENNEMIS (Système Inversé par tranche de 5000) ---
   // ======================================================================
   if (gameState.status === 'start') {
-    let currentDifficultyBonus = 0;
-
-    // PROTECTION ET SYNCHRO : Si le score repasse sous 5000 (reset), la vitesse redevient calme à 175 !
-    if (gameState.score >= 5000) {
-      let pointsAuDela = gameState.score - 5000;
-      currentDifficultyBonus = Math.floor(pointsAuDela / 1000) * 20;
+    // Calcul mathématique du mode : division par 5000 arrondie à l'inférieur
+    // Si tranche est paire (0, 2, 4...) -> Mode Normal (Ex: 0-4999, 10000-14999)
+    // Si tranche est impaire (1, 3, 5...) -> Mode Rapide (Ex: 5000-9999, 15000-19999)
+    let tranche = Math.floor(gameState.score / 5000);
+    let currentEnemySpeed = 175; // Vitesse de base par défaut
+    
+    if (tranche % 2 !== 0) {
+      currentEnemySpeed = 350; // Mode RAPIDE forcé
     }
 
-    let currentEnemySpeed = 175 + currentDifficultyBonus; 
-    currentEnemySpeed = Math.min(currentEnemySpeed, 450); 
     let dynamicLaserSpeed = currentEnemySpeed + 225; 
 
     gameState.enemyLasers.forEach(l => {
@@ -1170,11 +1162,8 @@ function update() {
     }); 
   }
 
-  // ======================================================================
-  // GESTION DE L'INCLINAISON DES AILES AUTOMATIQUE (PC + IPHONE)
-  // ======================================================================
+  // GESTION DE L'INCLINAISON DES AILES AUTOMATIQUE
   let movimientoReelX = hero.x - ancienX;
-
   if (movimientoReelX > 0.5) {
     hero.direction = 'right'; 
   } else if (movimientoReelX < -0.5) {
