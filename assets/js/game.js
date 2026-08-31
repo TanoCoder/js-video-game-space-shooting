@@ -319,6 +319,9 @@ function updateSoundButtonUI() {
 function initControls() {
   updateSoundButtonUI();
 
+  // ======================================================================
+  // ECOUTEUR DU BOUTON DE SON
+  // ======================================================================
   const soundDiv = document.getElementById("div_sound");
   if (soundDiv) {
     soundDiv.addEventListener("click", (e) => {
@@ -328,6 +331,32 @@ function initControls() {
         initAudioContext();
       }
       updateSoundButtonUI();
+    });
+  }
+
+  // ====================================================================
+  // ECOUTEUR DU BOUTON START (Modifié pour supporter le test local direct)
+  // ======================================================================
+  const startButton = document.getElementById('div_run');
+  if (startButton) {
+    startButton.addEventListener('pointerdown', (e) => {
+        e.stopPropagation(); // Évite que le clic ne déclenche un tir de laser immédiat
+
+        // 1. Débloquer le son sur mobile (Sécurité des navigateurs)
+        if (window.AudioContext || window.webkitAudioContext) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        
+        // 2. Appel sécurisé : si la fonction est déjà prête, on l'exécute.
+        // Sinon, on attend 50ms pour laisser le temps à game.js de finir son chargement.
+        if (typeof startGame === 'function') {
+            startGame();
+        } else {
+            setTimeout(() => {
+                if (typeof startGame === 'function') startGame();
+            }, 50);
+        }
     });
   }
 
@@ -359,7 +388,7 @@ function initControls() {
   // B. INTERCEPTION DES CLICS ET TACTILES POINTERDOWN (PC / MOBILE)
   // ======================================================================
   window.addEventListener("pointerdown", e => {
-    if (e.target.id === "div_sound" || e.target.id === "sound_text") return;
+    if (e.target.id === "div_sound" || e.target.id === "sound_text" || e.target.id === "div_run") return;
 
     let screenCenter = window.innerWidth / 2;
     let screenMiddleY = window.innerHeight / 2;
@@ -389,17 +418,23 @@ function initControls() {
       return; 
     }
 
-    // --- CORRECTION : UN SEUL DOIGT POUR PILOTER SUR MOBILE ---
-    // Si le jeu tourne et qu'on touche l'écran, on commence à suivre le pointeur (doigt ou souris cliquée)
-    if (gameState.status === 'start') {
+    // --- GESTION DU PILOTAGE & TIR TACTILE EN JEU ---
+    if (gameState.status === 'start' && !gameState.isPaused) {
       activePointerId = e.pointerId;
       inputs.touchX = e.clientX; 
+
+      // TIRER EN TOUCHANT L'ÉCRAN : On simule l'appui sur Espace ou on appelle votre fonction
+      inputs.keySpace = true; 
+      
+      // Si vous préférez appeler directement la fonction de tir (décommentez ci-dessous si nécessaire) :
+      // if (typeof shoot === 'function') shoot();
     }
   });
 
   window.addEventListener("pointerup", e => {
     if (e.pointerId === activePointerId) {
       inputs.touchX = null; // Le joueur lève le doigt, on arrête de suivre la position
+      inputs.keySpace = false; // On arrête de tirer
       activePointerId = null;
     }
   });
@@ -407,6 +442,7 @@ function initControls() {
   window.addEventListener("pointercancel", e => {
     if (e.pointerId === activePointerId) {
       inputs.touchX = null;
+      inputs.keySpace = false;
       activePointerId = null;
     }
   });
@@ -644,7 +680,7 @@ function drawStars() {
 }
 
 // 3. Entités et Physique
-// laser.js, enemy.js, collisions.js et ui.js
+// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
 
 class Laser {
   constructor(x, y) {
@@ -659,7 +695,7 @@ class Laser {
 }
 
 // 3. Entités et Physique
-// laser.js, enemy.js, collisions.js et ui.js
+// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
 
 // ======================================================================
 // CLASSE ENNEMI (LOGIQUE UNIQUE ET IA DES VAISSEAUX)
@@ -742,7 +778,7 @@ class Enemy {
 }
 
 // 3. Entités et Physique
-// laser.js, enemy.js, collisions.js et ui.js
+// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
 
 // Fonction globale de calcul géométrique des boîtes d'impacts actifs
 function checkCollisions(hero, onHeroHit) {
@@ -807,6 +843,9 @@ function checkCollisions(hero, onHeroHit) {
     });
   }
 }
+
+// 3. Entités et Physique
+// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
 
 // ======================================================================
 // 1. RENDU DE L'INTERFACE DE JEU VISUELLE (SCORE ET VIE)
@@ -951,6 +990,111 @@ function drawPauseScreen() {
   ctx.restore();
 }
 
+// 3. Entités et Physique
+// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
+
+//______________________________________________________________________
+// LOGIQUE PHYSIQUE DU JEU (UPDATE)
+// ______________________________________________________________________
+function update() {
+  if (gameState.status === 'gameOver') return;
+  if (gameState.isPaused) return;
+
+  // Déplacement horizontal du joueur (Clavier PC ou Tactile Smartphone via touchX)
+  if (!hero.isExploding) {
+    if (inputs.touchX !== null) {
+      // PILOTAGE MOBILE/SOURIS FLUIDE : Le vaisseau suit le doigt horizontalement
+      let targetX = inputs.touchX - (gameState.playerWidth / 2);
+      hero.x += (targetX - hero.x) * 0.2; // Suivi amorti (Lerp)
+      if (hero.x < 0) hero.x = 0;
+      if (hero.x > max_x) hero.x = max_x;
+    } else {
+      // PILOTAGE PC CLASSIQUE : Touches fléchées
+      if (inputs.keyLeft) { hero.x -= Math.floor(hero.speed * gameState.dt); if (hero.x < 0) hero.x = 0; }
+      if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
+    }
+    
+    // TIR AUTOMATIQUE : On autorise le tir en jeu ET sur l'écran d'accueil
+    // --- B. AUTOMATIC SHOOTING SYSTEM ---
+    let currentTime = performance.now();
+    
+    // CORRECTION PC : À l'accueil, on tire si on glisse/clique (touchX) OU si on presse Espace (keySpace)
+    let shouldFireAtHome = (gameState.status === 'notYetStarted' && (inputs.touchX !== null || inputs.keySpace));
+    let shouldFireInGame = (gameState.status === 'start');
+
+    if ((shouldFireInGame || shouldFireAtHome) && (currentTime - lastHeroFireTime > coolDownHeroFireTime)) {
+      gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 21), hero.y - 35)); 
+      lastHeroFireTime = currentTime;
+      playLaserSound(); 
+    }    
+  }
+
+  // Déplacement de tous les projectiles lasers actifs du joueur
+  gameState.arrayLaser.forEach(laser => laser.update());
+  // Garbage Collector : Supprime de la mémoire les tirs hors-écran
+  for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
+
+  // --- MISE À JOUR DES LASERS ENNEMIS GLOBAUX ---
+  if (gameState.status === 'start') {
+    let currentDifficultyBonus = Math.floor(gameState.score / 1000) * 20;
+    let currentEnemySpeed = 175 + currentDifficultyBonus; 
+    currentEnemySpeed = Math.min(currentEnemySpeed, 450); // Cap de vitesse max synchro avec enemy.js
+    
+    let dynamicLaserSpeed = currentEnemySpeed + 225; // Le tir va toujours plus vite que l'ennemi
+
+    gameState.enemyLasers.forEach(l => {
+      l.y += Math.floor(dynamicLaserSpeed * gameState.dt); 
+    });
+
+    for (let i = gameState.enemyLasers.length - 1; i >= 0; i--) {
+      if (gameState.enemyLasers[i].y > window.innerHeight) {
+        gameState.enemyLasers.splice(i, 1);
+      }
+    }
+  }
+
+  // Maintien actif et gestion de la flotte d'ennemis
+  if (gameState.status === 'start') {
+    while (gameState.enemies.length < 10) {
+      let spawnX = gameState.deletedEnemiesPosX.length > 0 ? gameState.deletedEnemiesPosX.shift() : getRandom(60, canvas.width - 60);
+      spawnX = spawnX + getRandom(-40, 40);
+      
+      let minX = 60;
+      let maxX = canvas.width - gameState.enemyWidth - 60;
+      if (spawnX < minX) spawnX = minX;
+      if (spawnX > maxX) spawnX = maxX;
+      
+      gameState.enemies.push(new Enemy(spawnX, getRandom(-800, -100)));
+    }
+    
+    gameState.enemies.forEach(en => en.update(hero.x, hero.isExploding, hero.isProtected));
+    checkCollisions(hero, () => { hero.isExploding = true; gameState.playerHp--; }); 
+  }
+}
+// 3. Entités et Physique
+// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
+
+// ______________________________________________________________________
+// LOGIQUE GRAPHISME DE RENDU (DRAW)
+// ______________________________________________________________________
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height); 
+  drawStars(); 
+
+  if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
+  if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) drawEnemiesAndTheirLasers(); 
+
+  let lW = window.innerWidth >= 1024 ? 30 : 21;
+  let lH = window.innerWidth >= 1024 ? 50 : 36;
+  gameState.arrayLaser.forEach(l => ctx.drawImage(assets.userLaser, 300, 25, 60, 110, l.x, l.y, lW, lH)); 
+
+  drawPlayerAndShield(hero, anim); 
+  
+  drawUI();          
+  drawGameOver();    
+  drawPauseScreen(); 
+}
+
 // 4. Cœur du jeu (Boucle principale)
 // game.js
 
@@ -1002,126 +1146,28 @@ window.addEventListener('resize', () => {
   hero.y = (canvas.height - gameState.playerHeight - 30); // Maintient la hauteur de sécurité
 });
 
-// Événement de clic direct sur le bouton d'accueil START (si on clique dessus avec la souris/doigt)
-divRun.addEventListener("click", () => {             
+// ======================================================================
+// FONCTION DE DÉMARRAGE DU JEU (Appelée par controls.js)
+// ======================================================================
+function startGame() {
   if (gameState.status === 'notYetStarted') {
     const rect = divRun.getBoundingClientRect();
-    anim.explodeX = rect.left + (rect.width / 2) - 100; anim.explodeY = rect.top + (rect.height / 2) - 100;
-    divRun.style.display = 'none'; anim.accudeltaTime = 0; anim.drawExplodeRun = true;
+    anim.explodeX = rect.left + (rect.width / 2) - 100; 
+    anim.explodeY = rect.top + (rect.height / 2) - 100;
+    divRun.style.display = 'none'; 
+    anim.accudeltaTime = 0; 
+    anim.drawExplodeRun = true;
     
-    // CORRECTION AUDIO ASYNCHRONE : On décale l'explosion d'un micro-instant
     if (!gameState.isMuted) {
-      setTimeout(() => { playExplosionSound(); }, 1);
+      setTimeout(() => { if (typeof playExplosionSound === 'function') playExplosionSound(); }, 1);
     }
     gameState.status = 'start';
   }
-});    
+}
 
 // Écouteurs globaux de réinitialisation si le joueur est sur l'écran de Game Over
 [window, 'touchstart'].forEach(ev => window.addEventListener(ev, () => { if (gameState.status === 'gameOver') resetGame(hero); }));
 window.addEventListener("keydown", (e) => { if (gameState.status === 'gameOver' && e.code === "Space") resetGame(hero); });
-
-// ______________________________________________________________________
-// 2. LOGIQUE PHYSIQUE DU JEU (UPDATE)
-// ______________________________________________________________________
-function update() {
-  if (gameState.status === 'gameOver') return;
-  if (gameState.isPaused) return;
-
-  // Déplacement horizontal du joueur (Clavier PC ou Tactile Smartphone via touchX)
-  if (!hero.isExploding) {
-    if (inputs.touchX !== null) {
-      // PILOTAGE MOBILE/SOURIS FLUIDE : Le vaisseau suit le doigt horizontalement
-      let targetX = inputs.touchX - (gameState.playerWidth / 2);
-      hero.x += (targetX - hero.x) * 0.2; // Suivi amorti (Lerp)
-      if (hero.x < 0) hero.x = 0;
-      if (hero.x > max_x) hero.x = max_x;
-    } else {
-      // PILOTAGE PC CLASSIQUE : Touches fléchées
-      if (inputs.keyLeft) { hero.x -= Math.floor(hero.speed * gameState.dt); if (hero.x < 0) hero.x = 0; }
-      if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
-    }
-    
-    // TIR AUTOMATIQUE : On autorise le tir en jeu ET sur l'écran d'accueil
-    // --- B. AUTOMATIC SHOOTING SYSTEM ---
-    let currentTime = performance.now();
-    
-    // CORRECTION PC : À l'accueil, on tire si on glisse/clique (touchX) OU si on presse Espace (keySpace)
-    let shouldFireAtHome = (gameState.status === 'notYetStarted' && (inputs.touchX !== null || inputs.keySpace));
-    let shouldFireInGame = (gameState.status === 'start');
-
-    if ((shouldFireInGame || shouldFireAtHome) && (currentTime - lastHeroFireTime > coolDownHeroFireTime)) {
-      gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 21), hero.y - 35)); 
-      lastHeroFireTime = currentTime;
-      playLaserSound(); 
-    }
-
-    
-  }
-
-  // Déplacement de tous les projectiles lasers actifs du joueur
-  gameState.arrayLaser.forEach(laser => laser.update());
-  // Garbage Collector : Supprime de la mémoire les tirs hors-écran
-  for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
-
-  // --- MISE À JOUR DES LASERS ENNEMIS GLOBAUX ---
-  if (gameState.status === 'start') {
-    let currentDifficultyBonus = Math.floor(gameState.score / 1000) * 20;
-    let currentEnemySpeed = 175 + currentDifficultyBonus; 
-    currentEnemySpeed = Math.min(currentEnemySpeed, 450); // Cap de vitesse max synchro avec enemy.js
-    
-    let dynamicLaserSpeed = currentEnemySpeed + 225; // Le tir va toujours plus vite que l'ennemi
-
-    gameState.enemyLasers.forEach(l => {
-      l.y += Math.floor(dynamicLaserSpeed * gameState.dt); 
-    });
-
-    for (let i = gameState.enemyLasers.length - 1; i >= 0; i--) {
-      if (gameState.enemyLasers[i].y > window.innerHeight) {
-        gameState.enemyLasers.splice(i, 1);
-      }
-    }
-  }
-
-  // Maintien actif et gestion de la flotte d'ennemis
-  if (gameState.status === 'start') {
-    while (gameState.enemies.length < 10) {
-      let spawnX = gameState.deletedEnemiesPosX.length > 0 ? gameState.deletedEnemiesPosX.shift() : getRandom(60, canvas.width - 60);
-      spawnX = spawnX + getRandom(-40, 40);
-      
-      let minX = 60;
-      let maxX = canvas.width - gameState.enemyWidth - 60;
-      if (spawnX < minX) spawnX = minX;
-      if (spawnX > maxX) spawnX = maxX;
-      
-      gameState.enemies.push(new Enemy(spawnX, getRandom(-800, -100)));
-    }
-    
-    gameState.enemies.forEach(en => en.update(hero.x, hero.isExploding, hero.isProtected));
-    checkCollisions(hero, () => { hero.isExploding = true; gameState.playerHp--; }); 
-  }
-}
-
-// ______________________________________________________________________
-// 3. LOGIQUE GRAPHISME DE RENDU (DRAW)
-// ______________________________________________________________________
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height); 
-  drawStars(); 
-
-  if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
-  if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) drawEnemiesAndTheirLasers(); 
-
-  let lW = window.innerWidth >= 1024 ? 30 : 21;
-  let lH = window.innerWidth >= 1024 ? 50 : 36;
-  gameState.arrayLaser.forEach(l => ctx.drawImage(assets.userLaser, 300, 25, 60, 110, l.x, l.y, lW, lH)); 
-
-  drawPlayerAndShield(hero, anim); 
-  
-  drawUI();          
-  drawGameOver();    
-  drawPauseScreen(); 
-}
 
 // ______________________________________________________________________
 // 4. BOUCLE PRINCIPALE CYCLIQUE (GAME LOOP)
@@ -1170,8 +1216,6 @@ function gameLoop(hrt) {
       }
     }
   }
-
   update(); draw(); window.requestAnimationFrame(gameLoop); 
 }
 window.requestAnimationFrame(gameLoop);
-
