@@ -17,7 +17,7 @@ const gameState = {
   enemies: [],                 
   deletedEnemiesPosX: [],      
   
-  // CORRECTION CRITIQUE : Tableau autonome pour les lasers des ennemis
+  // CORE : Tableau autonome pour les lasers des ennemis
   enemyLasers: [],
   score: 0,
   highScore: localStorage.getItem("spaceShooterHighScore") ? parseInt(localStorage.getItem("spaceShooterHighScore")) : 0,
@@ -32,7 +32,11 @@ const gameState = {
   playerWidth: 65,
   playerHeight: 40,
   enemyWidth: 35,
-  enemyHeight: 50
+  enemyHeight: 50, // 👈 CORRECTION : La virgule manquante a été ajoutée ici !
+  
+  powerUps: [],           // Tableau pour stocker les power-ups à l'écran
+  hasDoubleCanon: false,  // Devient true quand le héros ramasse le bonus
+  powerUpTimer: 0         // Compteur de temps pour les 5 secondes
 };
 
 // --- LOGIQUE MOBILE-FIRST / RESPONSIVE SCALING ---
@@ -1089,6 +1093,24 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height); 
   drawStars(); 
+  
+  // ======================================================================
+  // DESSIN DES POWER-UPS (Le fameux carré bonus "P")
+  // ======================================================================
+  gameState.powerUps.forEach(p => {
+    ctx.fillStyle = "red";       // Couleur rouge pour attirer l'œil
+    ctx.shadowColor = "orange";
+    ctx.shadowBlur = 15;         // Effet de halo néon lumineux
+    ctx.fillRect(p.x, p.y, p.width, p.height);
+    
+    // On écrit la lettre "P" (pour Power-up) bien au centre du carré
+    ctx.fillStyle = "white";
+    ctx.font = "bold 16px 'Courier New', monospace";
+    ctx.fillText("P", p.x + 10, p.y + 21);
+    
+    // Très important : on coupe l'effet d'ombre pour les prochains dessins
+    ctx.shadowBlur = 0;
+  });
 
   if (anim.drawExplodeRun) drawBoutonExplosion(anim); 
   if (gameState.status === 'start' || gameState.status === 'gameOver' || gameState.isPaused) drawEnemiesAndTheirLasers(); 
