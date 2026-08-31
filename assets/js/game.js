@@ -1049,7 +1049,7 @@ function update() {
     let shouldFireInGame = (gameState.status === 'start');
 
     if ((shouldFireInGame || shouldFireAtHome) && (currentTime - lastHeroFireTime > coolDownHeroFireTime)) {
-      gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 21), hero.y - 35)); 
+      gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 16), hero.y - 35)); 
       lastHeroFireTime = currentTime;
       playLaserSound(); 
     }    
