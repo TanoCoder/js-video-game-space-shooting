@@ -17,7 +17,7 @@ const gameState = {
   enemies: [],                 
   deletedEnemiesPosX: [],      
   
-  // CORE : Tableau autonome pour les lasers des ennemis
+  // CORRECTION CRITIQUE : Tableau autonome pour les lasers des ennemis
   enemyLasers: [],
   score: 0,
   highScore: localStorage.getItem("spaceShooterHighScore") ? parseInt(localStorage.getItem("spaceShooterHighScore")) : 0,
@@ -32,11 +32,13 @@ const gameState = {
   playerWidth: 65,
   playerHeight: 40,
   enemyWidth: 35,
-  enemyHeight: 50, // 👈 CORRECTION : La virgule manquante a été ajoutée ici !
+  enemyHeight: 50,
   
+  // LOGIQUE DU POWER-UP ET DOUBLE CANON
   powerUps: [],           // Tableau pour stocker les power-ups à l'écran
   hasDoubleCanon: false,  // Devient true quand le héros ramasse le bonus
-  powerUpTimer: 0         // Compteur de temps pour les 5 secondes
+  powerUpTimer: 0,        // Compteur de temps pour les 5 secondes
+  lastPowerUpSpawnTime: 0 // Stocke le point de repère temporel pour l'iPhone
 };
 
 // --- LOGIQUE MOBILE-FIRST / RESPONSIVE SCALING ---
@@ -991,7 +993,23 @@ function checkCollisions(hero, onHeroHit) {
 }
 
 // 3. Entités et Physique
-// laser.js, enemy.js, collisions.js, physics.js, render.je et ui.js
+// laser.js, enemy.js, collisions.js, physics.js, render.js et ui.js
+
+// ======================================================================
+// CLASSE CLASSIQUE POUR L'OBJET POWER-UP (DOUBLE CANON)
+// ======================================================================
+class PowerUp {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.width = 30;
+    this.height = 30;
+    this.speed = 150; // Vitesse de descente du bonus vers le bas
+  }
+  update() {
+    this.y += Math.floor(this.speed * gameState.dt);
+  }
+}
 
 //______________________________________________________________________
 // LOGIQUE PHYSIQUE DU JEU (UPDATE)
@@ -1003,8 +1021,7 @@ function update() {
   // Déplacement horizontal du joueur (Clavier PC ou Tactile Smartphone via cible relative)
   if (!hero.isExploding) {
     if (inputs.touchX !== null && inputs.targetX !== null) {
-      // Le vaisseau glisse en douceur vers la cible calculée par le touchpad
-      // On utilise 0.35 pour un amorti (Lerp) très agréable et pro
+      // Le vaisseau glisse en douceur vers la cible avec la nervosité à 0.35
       hero.x += (inputs.targetX - hero.x) * 0.35; 
       
       // Sécurité stricte des bordures physiques de l'écran
@@ -1017,7 +1034,7 @@ function update() {
     }
     
     // ======================================================================
-    // CADENCE DE TIR SÉCURISÉE (Évite le gel de l'écran sur mobile)
+    // CADENCE DE TIR SÉCURISÉE (Avec gestion du DOUBLE CANON)
     // ======================================================================
     let currentTime = performance.now();
     
@@ -1026,11 +1043,17 @@ function update() {
     let shouldFireInGame = (gameState.status === 'start');
 
     if ((shouldFireInGame || shouldFireAtHome) && !hero.isExploding) {
-      // Sécurité : Vérification stricte que le temps de recharge (cooldown) est dépassé
+      // Sécurité : Vérification stricte que le cooldown est dépassé
       if (currentTime - lastHeroFireTime >= coolDownHeroFireTime) {
         
-        // Création du laser (avec le centrage parfait à -16)
-        gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 13), hero.y - 35)); 
+        if (gameState.hasDoubleCanon) {
+          // 🔥 TIR DOUBLE PARALLÈLE : Décalé proprement à gauche (-32) et à droite (+8)
+          gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 32), hero.y - 35)); 
+          gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 + 8), hero.y - 35)); 
+        } else {
+          // TIR SIMPLE CLASSIQUE : Centrage parfait à -12
+          gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 12), hero.y - 35)); 
+        }
         
         lastHeroFireTime = currentTime;
         
@@ -1041,18 +1064,71 @@ function update() {
     }    
   }
 
+  // ======================================================================
+  // GESTION DU TIMER AUTONOME DE L'IPHONE ET APPARITION DU POWER-UP
+  // ======================================================================
+  // On l'autorise partout sauf en Game Over/Pause, tant que le bonus n'est pas ramassé
+  if (gameState.status !== 'gameOver' && !gameState.isPaused && !gameState.hasDoubleCanon) {
+    
+    if (!gameState.lastPowerUpSpawnTime || gameState.lastPowerUpSpawnTime === 0) {
+      gameState.lastPowerUpSpawnTime = performance.now();
+    }
+
+    let currentTicks = performance.now();
+    
+    // 5000 millisecondes = 5 secondes strictes
+    if (currentTicks - gameState.lastPowerUpSpawnTime >= 5000) {
+      let spawnX = getRandom(60, canvas.width - 60);
+      gameState.powerUps.push(new PowerUp(spawnX, -40));
+      
+      gameState.lastPowerUpSpawnTime = currentTicks; // Relance pour les prochaines 5s
+    }
+  }
+
+  // Mise à jour de la position et de la descente des Power-Ups
+  gameState.powerUps.forEach(p => p.update());
+
+  // Vérification de la collision : Héros touche un Power-Up
+  for (let i = gameState.powerUps.length - 1; i >= 0; i--) {
+    let p = gameState.powerUps[i];
+    
+    // Nettoyage si le bonus sort par le bas de l'écran
+    if (p.y > window.innerHeight) {
+      gameState.powerUps.splice(i, 1);
+      continue;
+    }
+
+    // Collision AABB : Si le héros touche le carré rouge
+    if (!hero.isExploding &&
+        hero.x < p.x + p.width &&
+        hero.x + gameState.playerWidth > p.x &&
+        hero.y < p.y + p.height &&
+        hero.y + gameState.playerHeight > p.y) {
+          
+      // 🎉 LE BONUS EST ACTIVÉ !
+      gameState.hasDoubleCanon = true;   
+      gameState.powerUps = [];           // On nettoie l'écran
+      gameState.lastPowerUpSpawnTime = 0; // Coupe le chrono d'apparition
+      
+      if (typeof playExplosionSound === 'function') { 
+        playExplosionSound(); // Petit retour sonore de puissance
+      }
+      break;
+    }
+  }
+
   // Déplacement de tous les projectiles lasers actifs du joueur
   gameState.arrayLaser.forEach(laser => laser.update());
   // Garbage Collector : Supprime de la mémoire les tirs hors-écran
   for (let i = gameState.arrayLaser.length - 1; i >= 0; i--) { if (gameState.arrayLaser[i].y < 0) gameState.arrayLaser.splice(i, 1); }
 
-  // --- MISE À PRIVILÈGE DES LASERS ENNEMIS GLOBAUX ---
+  // --- MISE À JOUR DES LASERS ENNEMIS GLOBAUX ---
   if (gameState.status === 'start') {
     let currentDifficultyBonus = Math.floor(gameState.score / 1000) * 20;
     let currentEnemySpeed = 175 + currentDifficultyBonus; 
-    currentEnemySpeed = Math.min(currentEnemySpeed, 450); // Cap de vitesse max synchro avec enemy.js
+    currentEnemySpeed = Math.min(currentEnemySpeed, 450); 
     
-    let dynamicLaserSpeed = currentEnemySpeed + 225; // Le tir va toujours plus vite que l'ennemi
+    let dynamicLaserSpeed = currentEnemySpeed + 225; 
 
     gameState.enemyLasers.forEach(l => {
       l.y += Math.floor(dynamicLaserSpeed * gameState.dt); 
