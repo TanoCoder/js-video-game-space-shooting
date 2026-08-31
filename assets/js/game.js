@@ -1046,9 +1046,9 @@ function update() {
       if (inputs.keyRight) { hero.x += Math.floor(hero.speed * gameState.dt); if (hero.x > max_x) hero.x = max_x; }
     }
     
-    // Maintient la hauteur de sécurité remontée à -40 pour le confort du pouce
-    if (hero.y > window.innerHeight - gameState.playerHeight - 40) { 
-      hero.y = window.innerHeight - gameState.playerHeight - 40;     
+    // CORRECTION HAUTEUR : Maintient la hauteur de sécurité remontée à -50 pour libérer le pouce
+    if (hero.y > window.innerHeight - gameState.playerHeight - 50) { 
+      hero.y = window.innerHeight - gameState.playerHeight - 50;     
     }
     
     // ======================================================================
@@ -1185,10 +1185,9 @@ function update() {
       hero.isExploding = true; 
       gameState.playerHp--; 
       
-      // ❌ LE HÉROS COUPE SON DOUBLE CANON DÈS QU'IL EST TOUCHÉ !
       gameState.hasDoubleCanon = false;   
-      gameState.powerUps = [];           // Supprime les bonus en cours de descente
-      gameState.lastPowerUpSpawnTime = 0; // Relancera le chrono de 5s après sa réapparition
+      gameState.powerUps = [];           
+      gameState.lastPowerUpSpawnTime = 0; 
     }); 
   }  
 }
@@ -1246,7 +1245,7 @@ const divRun = document.getElementById("div_run");
 // Création du héros calé au centre avec la hauteur de sécurité remontée (-95)
 const hero = { 
   x: window.innerWidth / 2 - (gameState.playerWidth / 2), 
-  y: window.innerHeight - 105, 
+  y: window.innerHeight - 115, 
   speed: 500, 
   isExploding: false, 
   isProtected: false 
@@ -1282,14 +1281,14 @@ window.addEventListener('DOMContentLoaded', () => {
 assets.spaceship.onload = () => { 
   max_x = (canvas.width - gameState.playerWidth); 
   hero.x = ((canvas.width - gameState.playerWidth) / 2); 
-  hero.y = (canvas.height - gameState.playerHeight - 40); // Sécurité remontée à -40
+  hero.y = (canvas.height - gameState.playerHeight - 50); // Sécurité remontée à -50
 };
 
 // Ajustement en temps réel lors du redimensionnement de l'écran (Ex: Fermeture inspecteur)
 window.addEventListener('resize', () => {
   max_x = (canvas.width - gameState.playerWidth);
   if (gameState.status === 'notYetStarted') { hero.x = ((canvas.width - gameState.playerWidth) / 2); }
-  hero.y = (canvas.height - gameState.playerHeight - 40); // Maintient la hauteur de sécurité
+  hero.y = (canvas.height - gameState.playerHeight - 50); // Maintient la hauteur de sécurité
 });
 
 // ======================================================================
