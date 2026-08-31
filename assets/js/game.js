@@ -460,7 +460,7 @@ function initControls() {
 
         // SENSIVILITÉ SMARTPHONE : On multiplie par 1.6 pour que le héros parcoure 
         // beaucoup plus de distance que votre pouce. Le pilotage devient instantané !
-        let sensitivity = 1.6; 
+        let sensitivity = 1.3; 
 
         inputs.targetX = inputs.startX + (deltaX * sensitivity);
       }
@@ -1026,7 +1026,7 @@ function update() {
       if (currentTime - lastHeroFireTime >= coolDownHeroFireTime) {
         
         // Création du laser (avec le centrage parfait à -16)
-        gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 16), hero.y - 35)); 
+        gameState.arrayLaser.push(new Laser((hero.x + gameState.playerWidth / 2 - 13), hero.y - 35)); 
         
         lastHeroFireTime = currentTime;
         
