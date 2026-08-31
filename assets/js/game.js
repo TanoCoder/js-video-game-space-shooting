@@ -38,7 +38,7 @@ const gameState = {
   powerUps: [],           // Tableau pour stocker les power-ups à l'écran
   hasDoubleCanon: false,  // Devient true quand le héros ramasse le bonus
   powerUpTimer: 0,        // Compteur de temps pour les 5 secondes
-  lastPowerUpSpawnTime: 0 // Stocke le point de repère temporel pour l'iPhone
+  lastPowerUpSpawnTime: 0
 };
 
 // --- LOGIQUE MOBILE-FIRST / RESPONSIVE SCALING ---
@@ -987,25 +987,6 @@ function checkCollisions(hero, onHeroHit) {
 // laser.js, enemy.js, collisions.js, physics.js, render.js et ui.js
 
 // ======================================================================
-// SYSTÈME DE MISE À JOUR DISCRÈTE (ANTI-CACHE IPHONE)
-// ======================================================================
-function verifierMiseAJourJeu() {
-  fetch('version.txt?nocache=' + performance.now())
-    .then(response => {
-      if (!response.ok) throw new Error();
-      return response.text();
-    })
-    .then(versionEnLigne => {
-      let versionLocale = localStorage.getItem("spaceShooterVersion") || "1.0";
-      if (versionEnLigne.trim() !== versionLocale.trim()) {
-        localStorage.setItem("spaceShooterVersion", versionEnLigne.trim());
-        window.location.reload();
-      }
-    })
-    .catch(err => console.log("Mode hors-ligne ou GitHub injoignable"));
-}
-
-// ======================================================================
 // CLASSE POUR L'OBJET POWER-UP (DOUBLE CANON)
 // ======================================================================
 class PowerUp {
@@ -1186,22 +1167,17 @@ function update() {
       gameState.hasDoubleCanon = false;   
       gameState.powerUps = [];           
       gameState.lastPowerUpSpawnTime = 0; 
-
-      // 🚀 NOUVEAUTÉ AUTOMATIQUE : Si c'est le Game Over, on check s'il y a un build en ligne !
-      if (gameState.playerHp <= 0) {
-        verifierMiseAJourJeu();
-      }
     }); 
   }
 
   // ======================================================================
   // GESTION DE L'INCLINAISON DES AILES AUTOMATIQUE (PC + IPHONE)
   // ======================================================================
-  let mouvementReelX = hero.x - ancienX;
+  let movimientoReelX = hero.x - ancienX;
 
-  if (mouvementReelX > 0.5) {
+  if (movimientoReelX > 0.5) {
     hero.direction = 'right'; 
-  } else if (mouvementReelX < -0.5) {
+  } else if (movimientoReelX < -0.5) {
     hero.direction = 'left';  
   } else {
     hero.direction = 'flat';  
